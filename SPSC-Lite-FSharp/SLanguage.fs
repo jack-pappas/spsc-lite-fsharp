@@ -173,4 +173,5 @@ type Program (rules: Rule list) =
     member x.GetF = f
     member x.GetG = g
     member x.GetGS = gs
-    override x.ToString() = List.mkString String.Empty rules
+    //override x.ToString() = List.mkString String.Empty rules
+    override x.ToString() = List.mkString "\n" rules

@@ -54,5 +54,6 @@ module Algebra =
 
     let isFGCall (expr:Term) : bool = 
         match expr with
-        | CFGObject.Ctr_(_,_) -> true
+        //| CFGObject.Ctr_(_,_) -> true
+        | CFGObject.FCall_(_, _) | CFGObject.GCall_(_, _) -> true
         | _ -> false

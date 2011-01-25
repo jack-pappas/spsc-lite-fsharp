@@ -69,12 +69,9 @@ let runBaseSuperCompiler(targetText:string, programText:string) =
     let sc = new BasicSuperCompiler(program)
     let pt = sc.BuildProcessTree target
     let (resTerm, resProgram) = (new ResidualProgramGenerator(pt)).Result
-    printfn "** runBaseSuperCompiler **
-    %O 
-    %O
-    %O
-    %O" target program resTerm resProgram
+    printfn "** runBaseSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%O" target program resTerm resProgram
 
 runBaseSuperCompiler Samples.sample1
 
+printf "Press ENTER to exit..."
 System.Console.ReadLine() |> ignore
