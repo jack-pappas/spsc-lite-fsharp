@@ -43,6 +43,9 @@
     <Compile Include="Algebra.fs" />
     <Compile Include="ProcessTree.fs" />
     <Compile Include="BasicSuperCompiler.fs" />
+    <Compile Include="HE.fs" />
+    <Compile Include="MSG.fs" />
+    <Compile Include="AdvancedSuperCompiler.fs" />
     <Compile Include="SParsers.fs" />
     <Compile Include="ResidualProgramGenerator.fs" />
     <Compile Include="Program.fs" />

@@ -21,7 +21,7 @@ type ``ProcessTree Tests`` () =
         let m1 = List.nth children 0
         let m2 = List.nth children 1
         tree := tree.Value.AddChildren(m1, [ (Var("n") :> Term, None) ])
-        tree := tree.Value.Replece(m2, Var("x"))
+        tree := tree.Value.Replace(m2, Var("x"))
 
     [<Test>]
     member v.``Test of tree building.`` () = 

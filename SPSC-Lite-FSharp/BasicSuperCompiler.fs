@@ -47,6 +47,6 @@ type BasicSuperCompiler(p:Program) =
                 | Some a -> 
                     let mapRef = Algebra.matchAgainst a.Expr b.Expr
                     let letTerm = Let(a.Expr, mapRef.Value |> Map.toList)
-                    (!t).Replece(b, letTerm :> Term)
+                    (!t).Replace(b, letTerm :> Term)
                 | None -> (!t).AddChildren(b, x.DriveExp(b.Expr))
         !t

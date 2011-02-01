@@ -42,6 +42,8 @@
     <Compile Include="Algebra_Tests.fs" />
     <Compile Include="ProecessTree_Tests.fs" />
     <Compile Include="BasicSupercompiler_Tests.fs" />
+    <Compile Include="HE_Tests.fs" />
+    <Compile Include="MSG_Test.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

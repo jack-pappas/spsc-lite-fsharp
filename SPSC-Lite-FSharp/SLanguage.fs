@@ -11,7 +11,6 @@ module List =
         | x1 :: x2 :: [] -> sprintf "%O%s%O" x1 separator x2
         | x :: xs -> sprintf "%O%s%s" x separator (mkString separator xs)
     let mkStringEnclosed left separator right l = sprintf "%s%s%s" left (mkString separator l) right
-    
 
 type Term = interface end
 
@@ -27,7 +26,10 @@ type Var (name:String) =
             | :? Var as v -> String.Compare (name, v.Name)
             | _ -> failwith "should be of type Var"
 
-    override v.Equals(x) = name = (x :?> Var).Name
+    override v.Equals(x) = 
+        match x with 
+        | :? Var as v -> name = v.Name
+        | _ -> false
 
     override v.GetHashCode() = name.GetHashCode()
 
@@ -46,8 +48,9 @@ type CFG (kind:TKind, name:String, args:Term list) =
     static member GCall(name:String, args:Term list) = CFG(TKind.GCall, name, args)
 
     override v.Equals(x) = 
-        let cfg = x :?> CFG
-        kind = cfg.Kind && name = cfg.Name && args = cfg.Args
+        match x with 
+        | :? CFG as cfg -> kind = cfg.Kind && name = cfg.Name && args = cfg.Args
+        | _ -> false
 
     interface Term
 
@@ -173,5 +176,5 @@ type Program (rules: Rule list) =
     member x.GetF = f
     member x.GetG = g
     member x.GetGS = gs
-    //override x.ToString() = List.mkString String.Empty rules
-    override x.ToString() = List.mkString "\n" rules
+    override x.ToString() = List.mkString String.Empty rules
+    member x.ToPrettyString() = List.mkString "\n" rules

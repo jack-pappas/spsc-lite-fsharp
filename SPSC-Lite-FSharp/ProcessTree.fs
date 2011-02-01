@@ -55,7 +55,7 @@ type Tree(freeId:int, root:Node, children:Map<Node, Node list>) =
                  root, 
                  Map.add n (List.map (fun (t,b) -> (i:=!i+1 ; new Node(!i, t, Some n, b))) cs) children)
 
-    member x.Replece (n:Node, exp:Term) = 
+    member x.Replace (n:Node, exp:Term) = 
         if (n = root) then new Tree(freeId, n, Map.empty)
         else
             let p = n.Parent |> Option.get

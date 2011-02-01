@@ -6,6 +6,7 @@ open SPSC.ResidualProgramGenerator
 
 open System
 
+// ToDo: samples 3 and 6 still don't work for AdvancedSuperCompiler. Additional debug is required.
 module Samples =
     let target1 = "gApp(gApp(x, y), z)"
     let program1 = "
@@ -69,9 +70,17 @@ let runBaseSuperCompiler(targetText:string, programText:string) =
     let sc = new BasicSuperCompiler(program)
     let pt = sc.BuildProcessTree target
     let (resTerm, resProgram) = (new ResidualProgramGenerator(pt)).Result
-    printfn "** runBaseSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%O" target program resTerm resProgram
+    printfn "** runBaseSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%s" target program resTerm (resProgram.ToPrettyString())
 
-runBaseSuperCompiler Samples.sample1
+let runAdvancedSuperCompiler(targetText:string, programText:string) =
+    let program = SParsers.parseProg programText
+    let target = SParsers.parseTerm targetText
+    let sc = new AdvancedSuperCompiler(program)
+    let pt = sc.BuildProcessTree target
+    let (resTerm, resProgram) = (new ResidualProgramGenerator(pt)).Result
+    printfn "** runAdvancedSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%s" target program resTerm (resProgram.ToPrettyString())
+
+runAdvancedSuperCompiler Samples.sample7
 
 printf "Press ENTER to exit..."
 System.Console.ReadLine() |> ignore
