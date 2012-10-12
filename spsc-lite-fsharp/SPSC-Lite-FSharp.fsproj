@@ -12,6 +12,8 @@
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>SPSC-Lite-FSharp</Name>
     <TargetFrameworkProfile />
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -39,6 +41,10 @@
   <Import Project="$(MSBuildExtensionsPath32)\FSharp\1.0\Microsoft.FSharp.Targets" Condition="!Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft F#\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />
   <ItemGroup>
+    <None Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="packages.config" />
     <Compile Include="SLanguage.fs" />
     <Compile Include="Algebra.fs" />
     <Compile Include="ProcessTree.fs" />
@@ -49,17 +55,13 @@
     <Compile Include="SParsers.fs" />
     <Compile Include="ResidualProgramGenerator.fs" />
     <Compile Include="Program.fs" />
-    <None Include="App.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Script.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
-      <HintPath>..\..\main-tip\main\Build\VS10\bin\Debug\FParsec.dll</HintPath>
+      <HintPath>..\packages\FParsec.0.9.2.0\lib\net40\FParsec.dll</HintPath>
     </Reference>
     <Reference Include="FParsecCS">
-      <HintPath>..\..\main-tip\main\Build\VS10\bin\Debug\FParsecCS.dll</HintPath>
+      <HintPath>..\packages\FParsec.0.9.2.0\lib\net40\FParsecCS.dll</HintPath>
     </Reference>
     <Reference Include="FSharp.PowerPack">
       <HintPath>C:\Program Files\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.dll</HintPath>
@@ -69,6 +71,7 @@
     <Reference Include="System" />
     <Reference Include="System.Xml" />
   </ItemGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">
