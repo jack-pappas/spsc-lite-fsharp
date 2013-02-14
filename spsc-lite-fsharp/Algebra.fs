@@ -1,59 +1,93 @@
-﻿namespace SPSC
+﻿module Algebra
 
-open System.Collections.Generic
+open FSharpx    // State workflow
+open SLanguage
 
-module Algebra =
-    open SPSC.SLanguage
+type Subst = Map<Name, Exp>
 
-    let shellEq (e1:CFG, e2:CFG) = 
-        e1.Kind = e2.Kind && 
-        e1.Name = e2.Name && 
-        e1.Args.Length = e2.Args.Length
+let theSameFunctor exp1 exp2 =
+    match exp1, exp2 with
+    | Call (kind1, name1, _), Call (kind2, name2, _) ->
+        kind1 = kind2 && name1 = name2
+    | _ ->
+        false
 
-    let rec applySubst (m:Map<Var, Term>) (term:Term) : Term = 
-        match term with
-        | :? Var as v -> 
-            match Map.tryFind v m with
-            | Some x -> x
-            | None -> v :> Term
-        | :? CFG as e -> e.ReplaceArgs (List.map (applySubst m) e.Args) :> Term
-        | _ -> failwith "unexpected type"
+let rec applySubst (m : Subst) e : Exp =
+    match e with
+    | Var name ->
+        let e' = Map.tryFind name m
+        defaultArg e' e
+    | Call (kind, name, args) ->
+        let args' = List.map (applySubst m) args
+        Call (kind, name, args')
 
-    let matchAgainst (t1:Term) (t2:Term) = 
-        let map = new Dictionary<Var, Term>()
-        let rec walk (t1:Term) (t2:Term) : bool = 
-            match (t1, t2) with
-            | (:? Var as v1, _) -> 
-                match map.TryGetValue v1 with
-                | true, t3 -> t2 = t3
-                | false, _ -> map.Add(v1, t2) ; true
-            | ((:? CFG as e1), (:? CFG as e2)) when shellEq(e1, e2) -> List.forall2 walk e1.Args e2.Args
-            | _ -> false
-        if not <| walk t1 t2 then None
-        else (seq{ for key in map.Keys do yield (key, map.[key]) }) |> Map.ofSeq |> Option.Some
+let rec matchAgainstAccL (m : Subst option) args1 args2 : Subst option =
+    match m, args1, args2 with
+    | Some m, [], [] ->
+        Some m
+    | Some m, e :: es, e' :: es' ->
+        matchAgainstAccL (matchAgainstAcc (Some m) e e') es es'
+    | _ ->
+        None 
 
-    let instOf (t1:Term) (t2:Term) = matchAgainst t2 t1 |> Option.isSome
+and matchAgainstAcc (m : Subst option) exp1 exp2 : Subst option =
+    match m, exp1, exp2 with
+    | Some m, Var vname, e' ->
+        match Map.tryFind vname m with
+        | None ->
+            Some <| Map.add vname e' m
+        | Some e'' ->
+            if e' <> e'' then None else Some m
+    | Some m, Call (kind, name, args), Call (kind', name', args')
+        when kind = kind' && name = name' ->
+        matchAgainstAccL (Some m) args args'
+    | _ ->
+        None
 
-    let equiv(t1:Term) (t2:Term) : bool = instOf t1 t2 && instOf t2 t1
+let matchAgainst e e' =
+    matchAgainstAcc (Some Map.empty) e e'
 
-    let rec vars (t:Term) : Var list = 
-        match t with 
-        | :? Var as v -> [v]
-        | :? CFG as e -> 
-            e.Args |> List.fold (fun vs exp ->
-                        exp |> vars 
-                            |> List.filter (fun x -> vs |> List.tryFind ((=) x) |> Option.isNone)
-                            |> List.append vs) [] 
-        | _ -> failwith "unexpected type"
+let instOf e' e =
+    matchAgainst e e'
+    |> Option.isSome
 
-    let private i = ref 0
+let equiv e1 e2 =
+    instOf e1 e2 && instOf e2 e1
 
-    let resetVarGen() = i := 0
+let rec private vars' exp =
+    match exp with
+    | Var vname ->
+        Set.singleton vname
+    | Call (_, _, args) ->
+        (Set.empty, args)
+        ||> List.fold (fun argVars arg ->
+            Set.union argVars (vars' arg))
 
-    let freshVar x = ( i := !i + 1 ; Var(sprintf "v%d" !i) )
+let vars exp =
+    vars' exp
+    |> Set.toList
 
-    let isFGCall (expr:Term) : bool = 
-        match expr with
-        //| CFGObject.Ctr_(_,_) -> true
-        | CFGObject.FCall_(_, _) | CFGObject.GCall_(_, _) -> true
-        | _ -> false
+let isFGCall = function
+    | Call (FCall, _, _)
+    | Call (GCall, _, _) ->
+        true
+    | _ ->
+        false
+
+let inline mkName t =
+    "v" + t.ToString ()
+
+let freshName =
+    State.state {
+    let! t = State.getState
+    do! State.putState (t + 1)
+    return mkName t
+    }
+
+let freshNameList n =
+    State.state {
+    let! t = State.getState
+    do! State.putState (t + n)
+    return
+        List.map mkName [t .. (t + n - 1)]
+    }

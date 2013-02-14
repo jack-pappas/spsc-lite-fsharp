@@ -1,77 +1,136 @@
-﻿namespace SPSC
+﻿module SParsers
 
 open FParsec.Primitives
 open FParsec.CharParsers
+open SLanguage
+open ShowUtil
 
-open SPSC.SLanguage
 
-// ToDo: Simplify it. 
-module SParsers =
-    //let ws  = spaces // skips any whitespace
-    //let ch  c = skipChar c >>. ws
-    //let str s = skipString s >>. ws
-    //let space:Parser<unit,unit> = whitespace |>> ignore
-    //let spacing:Parser<unit,unit> = skipManyChars space
+let alphaNum : Parser<char, unit> =
+    letter <|> digit
 
-    let ch c = skipChar c >>. spaces
-    let str s = skipString s >>. spaces
+let identifier : Parser<string, unit> =
+    manyChars2 letter alphaNum
 
-    let ident predicate =
-        let firstChar = satisfy (fun c -> isAsciiLetter c && predicate c)
-        let restChars = satisfy (fun c -> isAsciiLetter c || isDigit c)
-        let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString() + s)
-        //(p .>> ws) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
-        (p .>> spaces) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
+let uIdent : Parser<string, unit> = parse {
+    do! followedBy upper
+    return! identifier
+    }
 
-    let uid:Parser<string,unit> = ident isUpper
-    let lid:Parser<string,unit> = ident isLower
-    let fid:Parser<string,unit> = ident ((=) 'f')
-    let gid:Parser<string,unit> = ident ((=) 'g')
+let lIdent : Parser<string, unit> = parse {
+    do! followedBy lower
+    return! identifier
+    }
 
-    let vrb = lid |>> (fun x -> Var(x))
-    let pat = pipe2 uid (ch '(' >>. (sepBy vrb (ch ',')) .>> ch ')') (fun u vs -> Pat(u, vs))
+let fIdent : Parser<string, unit> = parse {
+    do! followedBy (pchar 'f')
+    return! identifier
+    }
 
-    let rec term = 
-        (*
-            ToDo: find out why does not work
-            let rec term =
-                (fcall |>> (fun x -> x :> Term)) <|>
-                (gcall |>> (fun x -> x :> Term)) <|>
-                (vrb |>> (fun x -> x :> Term)) <|>
-                (ctr |>> (fun x -> x :> Term))
-        *)
-        parse {
-            let! p = 
-                (fcall |>> (fun x -> x :> Term)) <|>
-                (gcall |>> (fun x -> x :> Term)) <|>
-                (vrb |>> (fun x -> x :> Term)) <|>
-                (ctr |>> (fun x -> x :> Term))
-            return p
+let gIdent : Parser<string, unit> = parse {
+    do! followedBy (pchar 'g')
+    return! identifier
+    }
+
+
+(* Programs *)
+
+// pattern :: Parser (Name, Params)
+let pattern : Parser<Name * Params, unit> = parse {
+    let! constructorName = uIdent
+    let! variableList =
+        sepBy lIdent (pchar ',')
+        |> between (pchar '(') (pchar ')')
+        <|>% []
+    return (constructorName, variableList)
+    }
+
+//
+let rec ``constructor`` = parse {
+    let! ctrName = uIdent
+    let! argList =
+        sepBy expression (pchar ',')
+        |> between (pchar '(') (pchar ')')
+        <|>% []
+    return Call (Ctr, ctrName, argList)
+    }
+
+//
+and variableOrFunctionCall = parse {
+    let! name = lIdent
+    let! argList =
+        sepBy1 expression (pchar ',')
+        |> between (pchar '(') (pchar ')')
+    match name.[0] with
+    | 'f' ->
+        return Call (FCall, name, argList)
+    | 'g' ->
+        return Call (GCall, name, argList)
+    | _ ->
+        return Var name
+    }
+
+//
+and expression =
+    ``constructor`` <|> variableOrFunctionCall
+
+//
+let fRule = parse {
+    let! functionName = fIdent
+    let! paramList =
+        sepBy1 lIdent (pchar ',')
+        |> between (pchar '(') (pchar ')')
+    do! skipChar '='
+    let! ruleRhs = expression
+    do! skipChar ';'
+    return FRule (functionName, paramList, ruleRhs)
+    }
+
+//
+let gRule = parse {
+    let! functionName = gIdent
+    do! skipChar '('
+    let! cname, cparamList = pattern
+    let! paramList =
+        many <| parse {
+        do! skipChar ','
+        return! lIdent
         }
-    and ctr = pipe2 uid (ch '(' >>. (sepBy term (ch ',')) .>> ch ')') (fun u ts -> CFG.Ctr(u, ts))
-    and fRule = pipe3 fid (between (ch '(') (ch ')') (sepBy vrb (ch ','))) (between (ch '=') (ch ';') term) (fun f vs t -> FRule(f, vs, t))
-    and gRule = pipe4 gid (ch '(' >>. pat) ((many (ch ',' >>. vrb)) .>> ch ')') (between (ch '=') (ch ';') term) (fun g p vs t -> GRule(g, p, vs, t))
-    and fcall = pipe2 fid (between (ch '(') (ch ')') (sepBy term (ch ','))) (fun f ts -> CFG.FCall(f, ts))
-    and gcall = pipe2 gid (between (ch '(') (ch ')') (sepBy term (ch ','))) (fun g ts -> CFG.GCall(g, ts))
+    do! skipChar ')'
+    do! skipChar '='
+    let! ruleRhs = expression
+    do! skipChar ';'
+    return GRule (functionName, cname, cparamList, paramList, ruleRhs)
+    }
 
-    let definition = 
-        (*
-            ToDo: find out why does not work
-            let definition = (gRule |>> (fun x -> x :> Rule)) <|> (fRule |>> (fun x -> x :> Rule))
-        *)
-        parse {
-            let! p = (gRule |>> (fun x -> x :> Rule)) <|> (fRule |>> (fun x -> x :> Rule))
-            return p
-        }
+let rule =
+    fRule <|> gRule
 
-    let prog = spaces >>. (many definition)
+// program :: Parser Program
+let program = parse {
+    let! ruleList = many rule
+    do! eof
+    return Program ruleList
+    }
 
-    let parseTerm (s:string) = 
-        match run term s with
-        | Success(r, _, _) -> r
-        | Failure(str, exn, _) -> failwith str
+// run :: Show a => Parser a -> String -> IO ()
+let run' p input =
+    match run p input with
+    | Failure (errorString, error, state) ->
+        printfn "Parse error at %O" error
+    | Success (result, userState, endPos) ->
+        printfn "%O" result
 
-    let parseProg (s:string) = 
-        match run prog s with
-        | Success(r, _, _) -> Program r
-        | Failure(str, exn, _) -> failwith str
+let parseSLL =
+    run' program
+
+let pProg input =
+    match run program input with
+    | Success (result, _, _) ->
+        result
+
+let pExp input =
+    match run expression input with
+    | Success (result, _, _) ->
+        result
+

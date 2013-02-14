@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{9E19ED
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestBench", "TestBench\TestBench.fsproj", "{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -26,6 +28,10 @@ Global
 		{65956B61-6559-42C0-AFDD-DDF0AF066DEA}.Debug|x86.Build.0 = Debug|x86
 		{65956B61-6559-42C0-AFDD-DDF0AF066DEA}.Release|x86.ActiveCfg = Release|x86
 		{65956B61-6559-42C0-AFDD-DDF0AF066DEA}.Release|x86.Build.0 = Release|x86
+		{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}.Debug|x86.ActiveCfg = Debug|x86
+		{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}.Debug|x86.Build.0 = Debug|x86
+		{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}.Release|x86.ActiveCfg = Release|x86
+		{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

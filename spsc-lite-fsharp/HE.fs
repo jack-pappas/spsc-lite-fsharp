@@ -1,26 +1,46 @@
-﻿namespace SPSC
+﻿module HE
 
-open SPSC.SLanguage
+open SLanguage
+open Algebra
 
-module HE =
-    let rec he (t1:Term) (t2:Term) = heByDiving(t1, t2) || heByCoupling(t1, t2)
+(*  We distinguish a specific category of expressions:
+    the ones that generate contractions in the process tree. *)
+let rec private aVarIsUnderAttack exp =
+    match exp with
+    | Call (GCall, _, args) ->
+        aVarIsUnderAttack <| List.head args
+    | Var _ ->
+        true
+    | _ ->
+        false
 
-    and heByDiving(t1:Term, t2:Term) : bool = 
-        match t2 with
-        | :? CFG as e -> List.exists (he t1) e.Args 
-        | _ -> false
+(* This is the "classic" homeomorphic imbedding relation. *)
 
-    and heByCoupling(t1:Term, t2:Term) : bool = 
-        match (t1, t2) with 
-        | (:? CFG as e1, (:? CFG as e2)) when Algebra.shellEq(e1, e2) -> List.forall2 he e1.Args e2.Args
-        | (:? Var, :? Var) -> true
-        | _ -> false
+let rec private heByDiving e1 e2 =
+    match e2 with
+    | Var _ ->
+        false
+    | Call (_, _, args) ->
+        List.exists (he e1) args
 
-    let rec aVarIsUnderAttack (t:Term) : bool = 
-        match t with
-        | CFGObject.GCall_(_, args) -> aVarIsUnderAttack args.Head
-        | :? Var -> true
-        | _ -> false
+and private heByCoupling e1 e2 =
+    match e1, e2 with
+    | Var _, Var _ ->
+        true
+    | Call (kind1, name1, args1), Call (kind2, name2, args2)
+        when kind1 = kind2 && name1 = name2 ->
+        List.map2 he args1 args2
+        |> List.reduce (&&)
+    | _ ->
+        false
 
-    let embeddedIn (t1:Term, t2:Term) : bool =
-        aVarIsUnderAttack t1 = aVarIsUnderAttack t2 && he t1 t2
+and he e1 e2 =
+    heByDiving e1 e2 || heByCoupling e1 e2
+
+(*  Enhanced homeomorphic embedding:
+    expressions are compared only if they belong
+    to the same category (as defined by `aVarIsUnderAttack`). *)
+
+let embeddedIn e1 e2 =
+    aVarIsUnderAttack e1 = aVarIsUnderAttack e2
+    && he e1 e2

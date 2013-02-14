@@ -1,45 +1,92 @@
-﻿namespace SPSC
+﻿/// Most Specific Generalization.
+module MSG
 
-open SPSC.SLanguage
+open FSharpx    // For State workflow
+open SParsers
+open SLanguage
+open ShowUtil
+open Algebra
 
-type Gen(t:Term, m1:Map<Var, Term>, m2:Map<Var, Term>) = 
-    member v.T = t
-    member v.M1 = m1
-    member v.M2 = m2    
 
-module MSG =
-    let rec commonSubst(gen:Gen) : Gen = 
-        // ToDo: simplify it
-        let res : Option<Gen> ref = ref None
-        Map.iter (fun v1 e1 ->
-            Map.iter (fun v2 e2 ->
-                if !res |> Option.isNone && 
-                   ((v1 <> v2 && e1 = e2) && (gen.M2.[v1] = gen.M2.[v2])) then
-                    res := Some(new Gen(Algebra.applySubst (Map.ofList [(v1, v2 :> Term)]) gen.T, 
-                                        Map.remove v1 gen.M1, 
-                                        Map.remove v1 gen.M2))) gen.M1) gen.M2
-        match !res with Some x -> x | None -> gen
+[<NoComparison>]
+type Gen =
+    | Gen of Exp * Subst * Subst
 
-    let commonFun(g:Gen) : Gen = 
-        let foldfun (gen,isFound) (v:Var) (t:Term) = 
-            if isFound then (gen, true)
-            else
-                match g.M1.[v], g.M2.[v] with
-                | (:? CFG as e1, (:? CFG as e2)) when Algebra.shellEq(e1, e2) -> 
-                    let vs = List.map Algebra.freshVar e1.Args
-                    let t = Algebra.applySubst (Map.ofList [(v, e1.ReplaceArgs(List.map (fun x -> x :> Term) vs) :> Term)]) g.T
-                    let m1 = Map.ofList( List.concat ([ ((Map.remove v g.M1) |> Map.toList) ; List.zip vs e1.Args ]) )
-                    let m2 = Map.ofList( List.concat ([ ((Map.remove v g.M2) |> Map.toList) ; List.zip vs e2.Args ]) )
-                    (new Gen(t, m1, m2), true)
-                | _ -> (gen, false)
-        Map.fold foldfun (g, false) g.M1 |> fst
+    override this.ToString () =
+        match this with
+        | Gen (e, subst1, subst2) ->
+            e.ToString () + " =>> "
+            + "{" + showBindings (Map.toList subst1) + "}"
+            + "{" + showBindings (Map.toList subst2) + "}"
 
-    let msg (t1:Term, t2:Term) : Gen = 
-        let v = Algebra.freshVar() 
-        let g = new Gen(v, Map.ofList [(v,t1)], Map.ofList [(v,t2)]) |> ref
-        let exp = ref g.Value.T
-        g := commonSubst(commonFun(g.Value))
-        while (exp.Value <> g.Value.T) do
-            exp := g.Value.T
-            g := commonSubst(commonFun(g.Value))
-        g.Value
+//
+let mergeableKeyPairs m1 m2 : (_ * _) list =
+    ([], Map.toList m1, Map.toList m2)
+    |||> List.fold2 (fun keyPairs (k1, e1) (k2, e2) ->
+        if k1 < k2 &&
+            e1 = e2 &&
+            Map.find k1 m2 = Map.find k2 m2 then
+            (k1, k2) :: keyPairs
+        else
+            keyPairs)
+
+//
+let mergeSubexp (Gen (e, m1, m2) as u) =
+    match mergeableKeyPairs m1 m2 with
+    | [] -> u
+    | (k1, k2) :: _ ->
+        let e' =
+            let m =
+                Map.empty |> Map.add k1 (Var k2)
+            applySubst m e
+        
+        let m1' = Map.remove k1 m1
+        let m2' = Map.remove k1 m2
+        Gen (e', m1', m2')
+
+// commonFunctor :: Gen -> State Int Gen
+let commonFunctor (Gen (e, m1, m2) as u) : State.State<Gen, int> =
+    State.state {
+    let kes =
+        ([], m1)
+        ||> Map.fold (fun kes k e1 ->
+            if theSameFunctor e1 (Map.find k m2) then
+                (k, e1) :: kes
+            else kes)
+
+    match kes with
+    | [] ->
+        return u
+    | (k, (Call (ctr, name, args1) as e1)) :: _ ->
+        let (Call (_,_,args2) as e2) = Map.find k m2
+        let! ns = freshNameList (List.length args1)
+        let vs = List.map Var ns
+        let e' =
+            let m = Map.add k (Call (ctr, name, vs)) Map.empty
+            applySubst m e
+        let m1' = Map.union (Map.remove k m1) (Map.ofList <| List.zip ns args1)
+        let m2' = Map.union (Map.remove k m2) (Map.ofList <| List.zip ns args2)
+        return Gen (e', m1', m2')
+    }
+
+// msgLoop :: Gen -> State Int Gen
+let rec msgLoop (u : Gen) : State.State<Gen, int> =
+    State.state {
+    let u' = mergeSubexp u
+    let! u'' = commonFunctor u'
+    if u'' = u then
+        return u
+    else
+        return! msgLoop u''
+    }
+
+// msg :: Exp -> Exp -> State Int Gen
+let msg (e1 : Exp) (e2 : Exp) : State.State<Gen, int> =
+    State.state {
+    let! k = freshName
+    let u =
+        let m1 = Map.empty |> Map.add k e1
+        let m2 = Map.empty |> Map.add k e2        
+        Gen (Var k, m1, m2)
+    return! msgLoop u
+    }
