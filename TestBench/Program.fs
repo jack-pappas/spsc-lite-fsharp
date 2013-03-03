@@ -82,7 +82,7 @@ module Program =
             ResidualProgramGenerator.genResidualProgram pt
 
         printfn "** runBaseSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%s"
-            target program resTerm (resProgram.ToPrettyString())
+            target program resTerm (resProgram.ToString())
 
     let runAdvancedSuperCompiler (targetText, programText) =
         let program = SParsers.pProg programText
@@ -93,7 +93,7 @@ module Program =
             ResidualProgramGenerator.genResidualProgram pt
 
         printfn "** runAdvancedSuperCompiler **\n\n%O\n\n%O\n\n%O\n\n%s"
-            target program resTerm (resProgram.ToPrettyString())
+            target program resTerm (resProgram.ToString())
 
     [<EntryPoint>]
     let main args =

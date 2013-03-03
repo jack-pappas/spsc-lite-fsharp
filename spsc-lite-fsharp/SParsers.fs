@@ -6,61 +6,64 @@ open SLanguage
 open ShowUtil
 
 
-let alphaNum : Parser<char, unit> =
-    letter <|> digit
+let ch c = skipChar c >>. spaces
+let str s = skipString s >>. spaces
 
-let identifier : Parser<string, unit> =
-    manyChars2 letter alphaNum
+let ident predicate =
+    let firstChar = satisfy (fun c -> isAsciiLetter c && predicate c)
+    let restChars = satisfy (fun c -> isAsciiLetter c || isDigit c)
+    let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString() + s)
+    p .>> spaces
 
-let uIdent : Parser<string, unit> = parse {
-    do! followedBy upper
-    return! identifier
-    }
+let uIdent : Parser<string, unit> =
+    ident isUpper <?> "uIdent"
 
-let lIdent : Parser<string, unit> = parse {
-    do! followedBy lower
-    return! identifier
-    }
+let lIdent : Parser<string, unit> =
+    ident isLower <?> "lIdent"
 
-let fIdent : Parser<string, unit> = parse {
-    do! followedBy (pchar 'f')
-    return! identifier
-    }
+let fIdent : Parser<string, unit> =
+    ident ((=) 'f') <?> "fIdent"
 
-let gIdent : Parser<string, unit> = parse {
-    do! followedBy (pchar 'g')
-    return! identifier
-    }
+let gIdent : Parser<string, unit> =
+    ident ((=) 'g') <?> "gIdent"
 
 
 (* Programs *)
 
 // pattern :: Parser (Name, Params)
-let pattern : Parser<Name * Params, unit> = parse {
+let pattern : Parser<Name * Params, unit> =
+    parse {
     let! constructorName = uIdent
     let! variableList =
-        sepBy lIdent (pchar ',')
-        |> between (pchar '(') (pchar ')')
+        (ch '(' >>. (sepBy lIdent (ch ',')) .>> ch ')')
+//        sepBy lIdent (skipChar ',')
+//        |> between (skipChar '(') (skipChar ')')
         <|>% []
     return (constructorName, variableList)
     }
+    <?> "pattern"
 
 //
-let rec ``constructor`` = parse {
+let rec ``constructor`` =
+    parse {
     let! ctrName = uIdent
     let! argList =
-        sepBy expression (pchar ',')
-        |> between (pchar '(') (pchar ')')
+        (ch '(' >>. (sepBy expression (ch ',')) .>> ch ')')
+//        sepBy expression (skipChar ',')
+//        |> between (skipChar '(') (skipChar ')')
         <|>% []
     return Call (Ctr, ctrName, argList)
     }
+    <?> "constructor"
 
 //
-and variableOrFunctionCall = parse {
+and variableOrFunctionCall =
+    parse {
     let! name = lIdent
     let! argList =
-        sepBy1 expression (pchar ',')
-        |> between (pchar '(') (pchar ')')
+        (ch '(' >>. (sepBy expression (ch ',')) .>> ch ')')
+//        sepBy1 expression (skipChar ',')
+//        |> between (skipChar '(') (skipChar ')')
     match name.[0] with
     | 'f' ->
         return Call (FCall, name, argList)
@@ -69,25 +72,31 @@ and variableOrFunctionCall = parse {
     | _ ->
         return Var name
     }
+    <?> "variableOrFunctionCall"
 
 //
 and expression =
     ``constructor`` <|> variableOrFunctionCall
+    <?> "expression"
 
 //
-let fRule = parse {
+let fRule =
+    parse {
     let! functionName = fIdent
     let! paramList =
-        sepBy1 lIdent (pchar ',')
-        |> between (pchar '(') (pchar ')')
+        (ch '(' >>. (sepBy1 lIdent (ch ',')) .>> ch ')')
+//        sepBy1 lIdent (skipChar ',')
+//        |> between (skipChar '(') (skipChar ')')
     do! skipChar '='
     let! ruleRhs = expression
     do! skipChar ';'
     return FRule (functionName, paramList, ruleRhs)
     }
+    <?> "fRule"
 
 //
-let gRule = parse {
+let gRule =
+    parse {
     let! functionName = gIdent
     do! skipChar '('
     let! cname, cparamList = pattern
@@ -96,19 +105,21 @@ let gRule = parse {
         do! skipChar ','
         return! lIdent
         }
+        <?> "paramList"
     do! skipChar ')'
     do! skipChar '='
     let! ruleRhs = expression
     do! skipChar ';'
     return GRule (functionName, cname, cparamList, paramList, ruleRhs)
     }
+    <?> "gRule"
 
 let rule =
-    fRule <|> gRule
+    fRule <|> gRule <?> "rule"
 
 // program :: Parser Program
 let program = parse {
-    let! ruleList = many rule
+    let! ruleList = spaces >>. many rule
     do! eof
     return Program ruleList
     }
@@ -128,9 +139,29 @@ let pProg input =
     match run program input with
     | Success (result, _, _) ->
         result
+    | Failure (errorString, error, _) ->
+        let ex =
+            System.Exception (
+                sprintf "Parse error at line %i, column %i: %s"
+                    error.Position.Line error.Position.Column errorString)
+        
+        ex.Data.Add ("Messages",
+            FParsec.ErrorMessageList.ToSortedArray error.Messages)
+        //ex.Data.Add ("UserState", error.UserState)
+
+        raise ex
 
 let pExp input =
     match run expression input with
     | Success (result, _, _) ->
         result
+    | Failure (errorString, error, _) ->
+        let ex =
+            System.Exception (
+                sprintf "Parse error at line %i, column %i: %s"
+                    error.Position.Line error.Position.Column errorString)
+        ex.Data.Add ("Messages",
+            FParsec.ErrorMessageList.ToSortedArray error.Messages)
+        //ex.Data.Add ("UserState", error.UserState)
 
+        raise ex

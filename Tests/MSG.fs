@@ -3,34 +3,33 @@ module MSG.Tests
 
 open NUnit.Framework
 open FsUnit
+open ExtCore
+open ExtCore.Control
 
+open SParsers
 open SLanguage
 open MSG
 
 
-let msgOK e1 e2 expected =
-    Algebra.resetVarGen()
-    let gen = MSG.msg(SParsers.parseTerm e1, SParsers.parseTerm e2)
-    let getStr = gen.ToStr()
-    getStr |> should equal expected
-    
-[<Test>]
-let ``Test of CommonFunctor.`` () =
-    msgOK "A(a1,C(a2,a3))"
-            "A(b1,C(b2,b3))"
-            //"Gen(A(v2,C(v4,v5)),Map(v2 -> a1, v4 -> a2, v5 -> a3),Map(v2 -> b1, v4 -> b2, v5 -> b3))" // This is Scala representation
-            "Gen(A(v2,C(v4,v5)), map [(v2, a1); (v4, a2); (v5, a3)], map [(v2, b1); (v4, b2); (v5, b3)])"
+let private evalMSG e1 e2 =
+    (State.evaluate <| msg e1 e2) 10000
 
 [<Test>]
-let ``Test of MergeSubexp1.`` () =
-    msgOK "A(a1,C(a2,a3))"
-            "A(b1,C(b2,b3))"
-            //"Gen(A(v2,C(v4,v5)),Map(v2 -> a1, v4 -> a2, v5 -> a3),Map(v2 -> b1, v4 -> b2, v5 -> b3))" // This is Scala representation
-            "Gen(A(v2,C(v4,v5)), map [(v2, a1); (v4, a2); (v5, a3)], map [(v2, b1); (v4, b2); (v5, b3)])"
-
-[<Test>]
-let ``Test of MergeSubexp2.`` () =
-    msgOK "f(a,a)"
-            "f(b,S(b))"
-            //"Gen(f(v2,v3),Map(v2 -> a, v3 -> a),Map(v2 -> b, v3 -> S(b)))" // This is Scala representation
-            "Gen(f(v2,v3), map [(v2, a); (v3, a)], map [(v2, b); (v3, S(b))])"
+[<TestCase(
+    "A(a1,C(a2,a3))",
+    "A(b1,C(b2,b3))",
+    TestName = "commonFunctor",
+    ExpectedResult = "A(v10001,C(v10003,v10004)) =>> {v10001=a1,v10003=a2,v10004=a3}{v10001=b1,v10003=b2,v10004=b3}")>]
+[<TestCase(
+    "f(a1,a2,a1)",
+    "f(b1,b2,b1)",
+    TestName = "mergeSubexp1",
+    ExpectedResult = "f(v10003,v10002,v10003) =>> {v10002=a2,v10003=a1}{v10002=b2,v10003=b1}")>]
+[<TestCase(
+    "f(a,a)",
+    "f(b,S(b))",
+    TestName = "mergeSubexp2",
+    ExpectedResult = "f(v10001,v10002) =>> {v10001=a,v10002=a}{v10001=b,v10002=S(b)}")>]
+let testMSG e1 e2 =
+    evalMSG (pExp e1) (pExp e2)
+    |> sprintf "%O"

@@ -8,7 +8,7 @@
     <ProjectGuid>{65956b61-6559-42c0-afdd-ddf0af066dea}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Tests</RootNamespace>
-    <AssemblyName>Tests</AssemblyName>
+    <AssemblyName>SPSCLiteFSharp.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Tests</Name>
     <TargetFrameworkProfile />
@@ -45,12 +45,16 @@
     <None Include="packages.config" />
     <Compile Include="SLanguage.fs" />
     <Compile Include="Algebra.fs" />
-    <Compile Include="ProcessTree.fs" />
     <Compile Include="HE.fs" />
     <Compile Include="MSG.fs" />
     <Compile Include="Supercompiler.fs" />
+    <Compile Include="ResidualProgramGenerator.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="ExtCore">
+      <HintPath>..\packages\ExtCore.0.8.0\lib\net40\ExtCore.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FsUnit.NUnit">
       <HintPath>..\packages\FsUnit.1.1.1.0\Lib\Net40\FsUnit.NUnit.dll</HintPath>
       <Private>True</Private>

@@ -22,8 +22,6 @@ type Exp =
         match this with
         | Var name ->
             name
-        | Call (Ctr, name, []) ->
-            name
         | Call (_, name, args) ->
             name + showArgs args
         | Let (e, bindings) ->

@@ -1,8 +1,9 @@
 ﻿module ResidualProgramGenerator
 
-open FSharpx.DataStructures // IntMap
-open FSharpx.DataStructures.IntMap  // TEMP : Rewrite code below to use qualified access
-open FSharpx    // For State workflow
+open ExtCore
+open ExtCore.Collections
+open ExtCore.Control
+open ExtCore.Control.Collections
 open Algebra
 open SLanguage
 open ProcessTree
@@ -18,15 +19,15 @@ let isVarTest (tree : Tree) { nodeChildren = bChId :: _ } : bool =
 
 // getFGSig :: Tree -> String -> NodeId -> Name -> [Name] -> State (Sigs, [Rule]) Sig
 let getFGSig (tree : Tree) (prefix : string) (nId : NodeId) (name : Name) (vs : Name list)
-    : State.State<Sig, Sigs * Rule list> =
-    State.state {
+    : StateFunc<Sigs * Rule list, Sig> =
+    state {
     let! sigs, rules = State.getState
     match IntMap.tryFind nId sigs with
     | None ->
-        let name' = prefix + name.[1..] + (IntMap.size sigs + 1).ToString ()
+        let name' = prefix + name.[1..] + (IntMap.count sigs + 1).ToString ()
         let sig' = (name', vs)
-        let sigs' = IntMap.insert nId sig' sigs
-        do! State.putState (sigs', rules)
+        let sigs' = IntMap.add nId sig' sigs
+        do! State.setState (sigs', rules)
         return sig'
 
     | Some sig' ->
@@ -34,11 +35,11 @@ let getFGSig (tree : Tree) (prefix : string) (nId : NodeId) (name : Name) (vs : 
     }
 
 // putFGRules :: [Rule] -> State (Sigs, [Rule]) ()
-let putFGRules (newRules : Rule list) : State.State<unit, Sigs * Rule list> =
-    State.state {
+let putFGRules (newRules : Rule list) : StateFunc<Sigs * Rule list, unit> =
+    state {
     let! sigs, rules = State.getState
     let rules' = rules @ newRules
-    do! State.putState (sigs, rules')
+    do! State.setState (sigs, rules')
     }
 
 // getChContr :: Tree -> [NodeId] -> [(Name, [Name])]
@@ -54,8 +55,8 @@ let getChContr (tree : Tree) (nIds : NodeId list) : (Name * Name list) list =
 
 // genResPrCall :: Tree -> Node -> Name -> [Exp] -> State (Sigs, [Rule]) Exp
 let rec genResPrCall (tree : Tree) ({ nodeId = bId; nodeExp = bE; nodeChildren = bChIds } as b) (name : Name) (args : Exp list)
-    : State.State<Exp, Sigs * Rule list> =
-    State.state {
+    : StateFunc<Sigs * Rule list, Exp> =
+    state {
     let ``params`` = vars bE
     if isVarTest tree b then
         let! sigs, rules = State.getState
@@ -82,8 +83,8 @@ let rec genResPrCall (tree : Tree) ({ nodeId = bId; nodeExp = bE; nodeChildren =
 
 // genResPrExp :: Tree -> Node -> State (Sigs, [Rule]) Exp
 and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
-    : State.State<Exp, Sigs * Rule list> =
-    State.state {
+    : StateFunc<Sigs * Rule list, Exp> =
+    state {
     match funcAncestors tree b with
     | [] ->
         match bE with
@@ -120,15 +121,15 @@ and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
 
 // genResPrExps :: Tree -> [NodeId] -> State (Sigs, [Rule]) [Exp]
 and genResPrExps (tree : Tree) (nIds : NodeId list)
-    : State.State<Exp list, Sigs * Rule list> =
+    : StateFunc<Sigs * Rule list, Exp list> =
     nIds
     |> List.map (fun nId ->
         IntMap.find nId tree)
-    |> State.mapM (genResPrExp tree)
+    |> State.List.map (genResPrExp tree)
 
 // genResidualProgram' :: Tree -> State (Sigs, [Rule]) (Program, Exp)
-let genResidualProgram' (tree : Tree) : State.State<Program * Exp, Sigs * Rule list> =
-    State.state {
+let genResidualProgram' (tree : Tree) : StateFunc<Sigs * Rule list, Program * Exp> =
+    state {
     let! resExp = genResPrExp tree <| IntMap.find 0 tree
     let! (_, rules) = State.getState
     return (Program rules, resExp)
@@ -136,5 +137,5 @@ let genResidualProgram' (tree : Tree) : State.State<Program * Exp, Sigs * Rule l
 
 // genResidualProgram :: Tree -> (Program, Exp)
 let genResidualProgram (tree : Tree) : Program * Exp =
-    (State.eval <| genResidualProgram' tree) (IntMap.empty, [])
+    (State.evaluate <| genResidualProgram' tree) (IntMap.empty, [])
 

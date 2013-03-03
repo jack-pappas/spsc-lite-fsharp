@@ -1,6 +1,6 @@
 ﻿module Algebra
 
-open FSharpx    // State workflow
+open ExtCore.Control
 open SLanguage
 
 type Subst = Map<Name, Exp>
@@ -78,16 +78,16 @@ let inline mkName t =
     "v" + t.ToString ()
 
 let freshName =
-    State.state {
+    state {
     let! t = State.getState
-    do! State.putState (t + 1)
+    do! State.setState (t + 1)
     return mkName t
     }
 
 let freshNameList n =
-    State.state {
+    state {
     let! t = State.getState
-    do! State.putState (t + n)
+    do! State.setState (t + n)
     return
         List.map mkName [t .. (t + n - 1)]
     }

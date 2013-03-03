@@ -1,8 +1,8 @@
 ﻿module ProcessTree
 
-open FSharpx    // For State workflow
-open FSharpx.DataStructures // IntMap
-open FSharpx.DataStructures.IntMap  // TEMP : Rewrite code below to use qualified access
+open ExtCore
+open ExtCore.Collections
+open ExtCore.Control
 open SLanguage
 open ShowUtil
 open Algebra
@@ -92,29 +92,29 @@ let isFuncNode (tree : Tree) (nId : NodeId) : bool =
 
 //
 let freshNodeId =
-    State.state {
+    state {
     let! (t : NodeId) = State.getState
-    do! State.putState (t + 1)
+    do! State.setState (t + 1)
     return t
     }
 
 //
 let freshNodeIdList (n : int) =
-    State.state {
+    state {
     let! (t : NodeId) = State.getState
-    do! State.putState (t + n)
+    do! State.setState (t + n)
     return [t .. (t + n - 1)]
     }
 
 // addChildren :: Tree -> NodeId -> [Branch] -> State Int Tree
-let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : State.State<Tree, int> =
-    State.state {
+let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : StateFunc<int, Tree> =
+    state {
     match IntMap.find nId tree with
     | { nodeExp = e; nodeContr = c; nodeParent = p; nodeChildren = chIds; } as node ->
         assert (node.nodeId = nId)
         let! chIds' = freshNodeIdList (List.length branches)
         let tree' =
-            tree |> IntMap.insert nId
+            tree |> IntMap.add nId
                 { node with nodeChildren = chIds @ chIds' }
         let chNodes =
             (chIds', branches)
@@ -138,8 +138,8 @@ let replaceSubtree (tree : Tree) (nId : NodeId) (e' : Exp) : Tree =
         assert (node.nodeId = nId)
         (tree, chIds)
         ||> List.fold (fun tree chId ->
-            IntMap.delete chId tree)
-        |> IntMap.insert nId
+            IntMap.remove chId tree)
+        |> IntMap.add nId
             { node with
                 nodeExp = e';
                 nodeChildren = []; }

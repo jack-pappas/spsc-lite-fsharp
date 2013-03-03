@@ -8,16 +8,27 @@ open SLanguage
 
 [<Test>]
 let ``Test ToString of Var and Call.`` () =
-    Var "x" |> string  |> should equal "x"
-    CFG.Ctr ("A", [Var "x"; Var "y"]) |> string |> should equal "A(x,y)"
+    Var "x"
+    |> sprintf "%O"
+    |> should equal "x"
+    
+    Call (Ctr, "A", [Var "x"; Var "y"])
+    |> sprintf "%O"
+    |> should equal "A(x,y)"
 
-    CFG.Ctr ("C", []) |> string |> should equal "C()"
+    Call (Ctr, "C", [])
+    |> sprintf "%O"
+    |> should equal "C()"
 
-    CFG.FCall ("fX", [Var "x"; Var "y"]) |> string |> should equal "fX(x,y)"
+    Call (FCall, "fX", [Var "x"; Var "y"])
+    |> sprintf "%O"
+    |> should equal "fX(x,y)"
 
-    CFG.GCall ("gX", [Var "x"; Var "y"]) |> string |> should equal "gX(x,y)"
+    Call (GCall, "gX", [Var "x"; Var "y"])
+    |> sprintf "%O"
+    |> should equal "gX(x,y)"
 
-
+(*
 [<Test>]
 let ``Test ToString of Let.`` () =
     // ToDo: How to make Let(Term, (Var*#Term) list) ?
@@ -28,32 +39,34 @@ let ``Test ToString of Let.`` () =
 
 [<Test>]
 let ``Test ToString of Rule.`` () =
-    FRule("f", [Var "x"; Var "y"], Var "y") |> string |> should equal "f(x,y)=y;"
+    FRule ("f", [Var "x"; Var "y"], Var "y")
+    |> sprintf "%O"
+    |> should equal "f(x,y)=y;"
     
-    GRule("g", Pat("C", [Var "x"]), [Var "y"], Var "y") |> string |> should equal "g(C(x),y)=y;"
+    GRule ("g", Pat("C", [Var "x"]), [Var "y"], Var "y")
+    |> sprintf "%O"
+    |> should equal "g(C(x),y)=y;"
     
-    GRule("g", Pat("C", []), [Var "y"], Var "y") |> string |> should equal "g(C(),y)=y;"
+    GRule ("g", Pat("C", []), [Var "y"], Var "y")
+    |> sprintf "%O"
+    |> should equal "g(C(),y)=y;"
     
-    GRule("g", Pat("C", []), [], CFG.Ctr ("C", [])) |> string |> should equal "g(C())=C();"
+    GRule ("g", Pat("C", []), [], CFG.Ctr ("C", []))
+    |> sprintf "%O"
+    |> should equal "g(C())=C();"
 
 [<Test>]
-let ``Test ToString of Program.`` () = 
-    (let program1 = Program([ FRule("f", [], CFG.Ctr("A", [])); 
-                                FRule("f1", [], CFG.Ctr("A1", []))]) in
-        string <| program1 |> should equal "f()=A();f1()=A1();" )
-    (let program2 = Program([ GRule("g",  Pat("C", []), [], CFG.Ctr("A", [])) ;
-                                GRule("g1", Pat("C", []), [Var("x")], CFG.Ctr("A", [])) ;
-                                GRule("g2", Pat("C", [Var("x")]), [], CFG.Ctr("A", [])) ]) in
-        string <| program2 |> should equal "g(C())=A();g1(C(),x)=A();g2(C(x))=A();" )
+let ``Test ToString of Program.`` () =
+    Program [
+        FRule("f", [], Call (Ctr, "A", [])); 
+        FRule("f1", [], Call (Ctr, "A1", [])); ]
+    |> sprintf "%O"
+    |> should equal "f()=A();f1()=A1();"
 
-[<Test>]
-let ``Equality tests.`` () =
-    (Var("x") = Var("x")) |> should be True
-    (Var("x") = Var("y")) |> should be False
-    (CFG.Ctr("A", []) = CFG.Ctr("A", [])) |> should be True
-    (CFG.Ctr("A", []) = CFG.Ctr("B", [])) |> should be False
-    ([Var("x")] = [Var("x")]) |> should be True
-    ([Var("x")] = [Var("y")]) |> should be False
-    ([Var("x")] = [Var("y"); Var("z")]) |> should be False
-    (CFG.Ctr("A", [Var("x")]) = CFG.Ctr("A",[Var("x")])) |> should be True
-
+    Program [
+        GRule("g", Pat("C", []), [], Call (Ctr, "A", []));
+        GRule("g1", Pat("C", []), [Var("x")], Call (Ctr, "A", []));
+        GRule("g2", Pat("C", [Var("x")]), [], Call (Ctr, "A", [])); ]
+    |> sprintf "%O"
+    |> should equal "g(C())=A();g1(C(),x)=A();g2(C(x))=A();"
+*)

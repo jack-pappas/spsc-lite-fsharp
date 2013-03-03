@@ -1,7 +1,9 @@
 ﻿/// Most Specific Generalization.
 module MSG
 
-open FSharpx    // For State workflow
+open ExtCore
+open ExtCore.Collections
+open ExtCore.Control
 open SParsers
 open SLanguage
 open ShowUtil
@@ -45,8 +47,8 @@ let mergeSubexp (Gen (e, m1, m2) as u) =
         Gen (e', m1', m2')
 
 // commonFunctor :: Gen -> State Int Gen
-let commonFunctor (Gen (e, m1, m2) as u) : State.State<Gen, int> =
-    State.state {
+let commonFunctor (Gen (e, m1, m2) as u) : StateFunc<int, Gen> =
+    state {
     let kes =
         ([], m1)
         ||> Map.fold (fun kes k e1 ->
@@ -70,8 +72,8 @@ let commonFunctor (Gen (e, m1, m2) as u) : State.State<Gen, int> =
     }
 
 // msgLoop :: Gen -> State Int Gen
-let rec msgLoop (u : Gen) : State.State<Gen, int> =
-    State.state {
+let rec msgLoop (u : Gen) : StateFunc<int, Gen> =
+    state {
     let u' = mergeSubexp u
     let! u'' = commonFunctor u'
     if u'' = u then
@@ -81,8 +83,8 @@ let rec msgLoop (u : Gen) : State.State<Gen, int> =
     }
 
 // msg :: Exp -> Exp -> State Int Gen
-let msg (e1 : Exp) (e2 : Exp) : State.State<Gen, int> =
-    State.state {
+let msg (e1 : Exp) (e2 : Exp) : StateFunc<int, Gen> =
+    state {
     let! k = freshName
     let u =
         let m1 = Map.empty |> Map.add k e1
