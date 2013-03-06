@@ -1,9 +1,13 @@
 ﻿module Algebra
 
+open ExtCore
 open ExtCore.Control
 open SLanguage
 
 type Subst = Map<Name, Exp>
+
+[<Measure>] type NodeIdentifier
+type NodeId = int<NodeIdentifier>
 
 let theSameFunctor exp1 exp2 =
     match exp1, exp2 with
@@ -77,17 +81,16 @@ let isFGCall = function
 let inline mkName t =
     "v" + t.ToString ()
 
-let freshName =
+let freshName : StateFunc<NodeId, string> =
     state {
     let! t = State.getState
-    do! State.setState (t + 1)
+    do! State.setState (t + 1<_>)
     return mkName t
     }
 
-let freshNameList n =
+let freshNameList n : StateFunc<NodeId, string list> =
     state {
     let! t = State.getState
-    do! State.setState (t + n)
-    return
-        List.map mkName [t .. (t + n - 1)]
+    do! State.setState (t + Tag.ofInt n)
+    return List.map mkName [Tag.toInt t .. (Tag.toInt t + n - 1)]
     }

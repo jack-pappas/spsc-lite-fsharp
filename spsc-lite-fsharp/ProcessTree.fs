@@ -7,8 +7,6 @@ open SLanguage
 open ShowUtil
 open Algebra
 
-type NodeId = int
-
 type Contraction =
     | Contraction of Name * Name * Params
 
@@ -29,13 +27,13 @@ type Node = {
     // deriving Show
 
 // By convention, the root node's id is 0.
-type Tree = IntMap<Node>
+type Tree = TagMap<NodeIdentifier, Node>
 
 let rec ancestors (tree : Tree) node =
     match node.nodeParent with
     | None -> []
     | Some parentId ->
-        let parentNode = IntMap.find parentId tree
+        let parentNode = TagMap.find parentId tree
         parentNode :: ancestors tree parentNode
 
 // funcAncestors :: Tree -> Node -> [Node]
@@ -64,7 +62,7 @@ let equivCall e e' =
 
 // treeLeavesAcc :: Tree -> NodeId -> [NodeId] -> [NodeId]
 let rec treeLeavesAcc (tree : Tree) (nId : NodeId) acc =
-    let node = IntMap.find nId tree
+    let node = TagMap.find nId tree
     if List.isEmpty node.nodeChildren then
         nId :: acc
     else
@@ -72,7 +70,7 @@ let rec treeLeavesAcc (tree : Tree) (nId : NodeId) acc =
 
 // treeLeaves :: Tree -> [NodeId]
 let treeLeaves (tree : Tree) : NodeId list =
-    treeLeavesAcc tree 0 []
+    treeLeavesAcc tree 0<_> []
 
 // funcNodes :: Tree -> [Node]
 let funcNodes (tree : Tree) =
@@ -80,7 +78,7 @@ let funcNodes (tree : Tree) =
         let leafId =
             // TODO : Is List.head the correct way to implement this?
             List.head <| treeLeaves tree
-        IntMap.find leafId tree
+        TagMap.find leafId tree
     funcAncestors tree node
 
 // isFuncNode :: Tree -> NodeId -> Bool
@@ -94,7 +92,7 @@ let isFuncNode (tree : Tree) (nId : NodeId) : bool =
 let freshNodeId =
     state {
     let! (t : NodeId) = State.getState
-    do! State.setState (t + 1)
+    do! State.setState (t + 1<_>)
     return t
     }
 
@@ -102,19 +100,24 @@ let freshNodeId =
 let freshNodeIdList (n : int) =
     state {
     let! (t : NodeId) = State.getState
-    do! State.setState (t + n)
-    return [t .. (t + n - 1)]
+    do! State.setState (t + Tag.ofInt n)
+    return
+        [Tag.toInt t .. (Tag.toInt t + n - 1)]
+        // HACK : The F# 2.0 (and maybe 3.0) compiler doesn't seem to
+        // allow list comprehensions over ranges of tagged integers,
+        // so we have to convert the list like this (which causes unnecessary overhead).
+        |> List.map Tag.ofInt
     }
 
-// addChildren :: Tree -> NodeId -> [Branch] -> State Int Tree
-let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : StateFunc<int, Tree> =
+// addChildren :: Tree -> NodeId -> [Branch] -> State NodeId Tree
+let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : StateFunc<NodeId, Tree> =
     state {
-    match IntMap.find nId tree with
+    match TagMap.find nId tree with
     | { nodeExp = e; nodeContr = c; nodeParent = p; nodeChildren = chIds; } as node ->
         assert (node.nodeId = nId)
         let! chIds' = freshNodeIdList (List.length branches)
         let tree' =
-            tree |> IntMap.add nId
+            tree |> TagMap.add nId
                 { node with nodeChildren = chIds @ chIds' }
         let chNodes =
             (chIds', branches)
@@ -126,20 +129,20 @@ let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : StateFun
                   nodeChildren = []; })
         let tree'' =
             List.zip chIds' chNodes
-            |> IntMap.ofList
-            |> IntMap.union tree'
+            |> TagMap.ofList
+            |> TagMap.union tree'
         return tree''
     }
 
 // replaceSubtree :: Tree -> NodeId -> Exp -> Tree
 let replaceSubtree (tree : Tree) (nId : NodeId) (e' : Exp) : Tree =
-    match IntMap.find nId tree with
+    match TagMap.find nId tree with
     | { nodeExp = e; nodeContr = c; nodeParent = p; nodeChildren = chIds; } as node ->
         assert (node.nodeId = nId)
         (tree, chIds)
         ||> List.fold (fun tree chId ->
-            IntMap.remove chId tree)
-        |> IntMap.add nId
+            TagMap.remove chId tree)
+        |> TagMap.add nId
             { node with
                 nodeExp = e';
                 nodeChildren = []; }

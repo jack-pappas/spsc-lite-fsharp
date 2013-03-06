@@ -48,8 +48,8 @@ let lookupG (Program rules) (name : Name) : (Name * Params * Params * Exp) list 
 
 (* Driving *)
 
-// drivingStep :: Program -> Exp -> State Int [Branch]
-let rec drivingStep (prog : Program) (e : Exp) : StateFunc<int, Branch list> =
+// drivingStep :: Program -> Exp -> State NodeId [Branch]
+let rec drivingStep (prog : Program) (e : Exp) : StateFunc<NodeId, Branch list> =
     state {
     match e with
     | Call (Ctr, name, args) ->
@@ -87,9 +87,9 @@ let rec drivingStep (prog : Program) (e : Exp) : StateFunc<int, Branch list> =
         return (body, None) :: vals
     }
 
-// driveBranch :: Program -> Exp -> Name -> Name -> Params -> Params -> State Int (Exp, Maybe Contraction)
+// driveBranch :: Program -> Exp -> Name -> Name -> Params -> Params -> State NodeId (Exp, Maybe Contraction)
 and driveBranch (prog : Program) (e : Exp) (vname : Name) (cname : Name) (cparams : Params) (``params`` : Params)
-    : StateFunc<int, Exp * Contraction option> =
+    : StateFunc<NodeId, Exp * Contraction option> =
     state {
     let! cparams' = freshNameList (List.length cparams)
     let cargs = List.map Var cparams'
@@ -113,13 +113,13 @@ let findMoreGeneralAncestors (tree : Tree) ({ nodeExp = eB } as beta) : Node lis
 let unprocessedNodes (tree : Tree) : Node list =
     treeLeaves tree
     |> List.choose (fun nId ->
-        let leaf = IntMap.find nId tree
+        let leaf = TagMap.find nId tree
         if isProcessed tree leaf then None
         else Some leaf)
 
-// buildLoop :: (Program -> Tree -> Node -> State Int Tree) -> Program -> Tree -> State Int Tree
-let rec buildLoop (buildStep : Program -> Tree -> Node -> StateFunc<int, Tree>)
-                (prog : Program) (tree : Tree) : StateFunc<int, Tree> =
+// buildLoop :: (Program -> Tree -> Node -> State NodeId Tree) -> Program -> Tree -> State NodeId Tree
+let rec buildLoop (buildStep : Program -> Tree -> Node -> StateFunc<NodeId, Tree>)
+                (prog : Program) (tree : Tree) : StateFunc<NodeId, Tree> =
     state {
     match unprocessedNodes tree with
     | [] ->
@@ -131,24 +131,24 @@ let rec buildLoop (buildStep : Program -> Tree -> Node -> StateFunc<int, Tree>)
 
 // initTree :: Exp -> Tree
 let initTree (e : Exp) : Tree =
-    IntMap.singleton 0 {
-        nodeId = 0;
+    TagMap.singleton 0<_> {
+        nodeId = 0<_>;
         nodeExp = e;
         nodeContr = None;
         nodeParent = None;
         nodeChildren = []; }
 
-// buildProcessTree :: (Program -> Tree -> Node -> State Int Tree) -> Program -> Exp -> Tree
-let buildProcessTree (buildStep : Program -> Tree -> Node -> StateFunc<int, Tree>)
+// buildProcessTree :: (Program -> Tree -> Node -> State NodeId Tree) -> Program -> Exp -> Tree
+let buildProcessTree (buildStep : Program -> Tree -> Node -> StateFunc<NodeId, Tree>)
                         (prog : Program) (e : Exp) : Tree =
-    (State.evaluate <| buildLoop buildStep prog (initTree e)) 10000
+    (State.evaluate <| buildLoop buildStep prog (initTree e)) 10000<_>
 
-// loopBack :: Program -> Tree -> Node -> Node -> State Int Tree
+// loopBack :: Program -> Tree -> Node -> Node -> State NodeId Tree
 /// If beta `instOf` alpha, we generalize beta by introducing
 /// a let-expression, in order to make beta the same as alpha
 /// (modulo variable names).
 let loopBack (prog : Program) (tree : Tree) ({ nodeId = bId; nodeExp = eB } as beta) ({ nodeExp = eA } as alpha)
-    : StateFunc<int, Tree> =
+    : StateFunc<NodeId, Tree> =
     state {
     let bindings =
         matchAgainst eA eB
@@ -158,10 +158,10 @@ let loopBack (prog : Program) (tree : Tree) ({ nodeId = bId; nodeExp = eB } as b
     return replaceSubtree tree bId letExp
     }
 
-// expandNode :: Program -> Tree -> Node -> State Int Tree
+// expandNode :: Program -> Tree -> Node -> State NodeId Tree
 /// This function applies a driving step to the node's expression,
 /// and, in general, adds children to the node.
-let expandNode (prog : Program) (tree : Tree) ({ nodeId = bId; nodeExp = eB } as beta) : StateFunc<int, Tree> =
+let expandNode (prog : Program) (tree : Tree) ({ nodeId = bId; nodeExp = eB } as beta) : StateFunc<NodeId, Tree> =
     state {
     let! branches = drivingStep prog eB
     return! addChildren tree bId branches
@@ -171,8 +171,8 @@ let expandNode (prog : Program) (tree : Tree) ({ nodeId = bId; nodeExp = eB } as
 (* Basic supercompiler *)
 [<RequireQualifiedAccess>]
 module Basic =
-    // basic_buildStep :: Program -> Tree -> Node -> State Int Tree
-    let buildStep (prog : Program) (tree : Tree) (beta : Node) : StateFunc<int, Tree> =
+    // basic_buildStep :: Program -> Tree -> Node -> State NodeId Tree
+    let buildStep (prog : Program) (tree : Tree) (beta : Node) : StateFunc<NodeId, Tree> =
         match findMoreGeneralAncestors tree beta with
         | [] ->
             expandNode prog tree beta
@@ -188,9 +188,9 @@ module Basic =
 
 [<RequireQualifiedAccess>]
 module Advanced =
-    // abstract :: Tree -> Node -> Exp -> Subst -> State Int Tree
+    // abstract :: Tree -> Node -> Exp -> Subst -> State NodeId Tree
     let ``abstract`` (tree : Tree) ({ nodeId = aId; nodeExp = eA } as alpha) (e : Exp) (subst : Subst)
-        : StateFunc<int, Tree> =
+        : StateFunc<NodeId, Tree> =
         state {
         let letExp =
             let bindings = Map.toList subst
@@ -198,9 +198,9 @@ module Advanced =
         return replaceSubtree tree aId letExp
         }
 
-    // split :: Tree -> Node -> State Int Tree
+    // split :: Tree -> Node -> State NodeId Tree
     let split (tree : Tree) { nodeId = nId; nodeExp = Call (kind, name, args) as e; }
-        : StateFunc<int, Tree> =
+        : StateFunc<NodeId, Tree> =
         state {
         let! names' = freshNameList (List.length args)
         let letExp =
@@ -212,7 +212,7 @@ module Advanced =
 
     // 
     let generalizeAlphaOrSplit (tree : Tree) ({ nodeExp = eB } as beta) ({ nodeExp = eA } as alpha)
-        : StateFunc<int, Tree> =
+        : StateFunc<NodeId, Tree> =
         state {
         let! gen = msg eA eB
         match gen with
@@ -230,8 +230,8 @@ module Advanced =
         |> List.filter (fun ({ nodeExp = eA } as alpha) ->
             isFGCall eA && embeddedIn eA eB)
 
-    // advanced_buildStep :: Program -> Tree -> Node -> State Int Tree
-    let buildStep (prog : Program) (tree : Tree) (beta : Node) : StateFunc<int, Tree> =
+    // advanced_buildStep :: Program -> Tree -> Node -> State NodeId Tree
+    let buildStep (prog : Program) (tree : Tree) (beta : Node) : StateFunc<NodeId, Tree> =
         match findMoreGeneralAncestors tree beta with
         | [] ->
             match findEmbeddedAncestors tree beta with

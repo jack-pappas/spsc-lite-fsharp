@@ -7,6 +7,7 @@ open ExtCore.Control
 open SParsers
 open SLanguage
 open ShowUtil
+open ProcessTree
 open Algebra
 
 
@@ -46,8 +47,8 @@ let mergeSubexp (Gen (e, m1, m2) as u) =
         let m2' = Map.remove k1 m2
         Gen (e', m1', m2')
 
-// commonFunctor :: Gen -> State Int Gen
-let commonFunctor (Gen (e, m1, m2) as u) : StateFunc<int, Gen> =
+// commonFunctor :: Gen -> State NodeId Gen
+let commonFunctor (Gen (e, m1, m2) as u) : StateFunc<NodeId, Gen> =
     state {
     let kes =
         ([], m1)
@@ -71,8 +72,8 @@ let commonFunctor (Gen (e, m1, m2) as u) : StateFunc<int, Gen> =
         return Gen (e', m1', m2')
     }
 
-// msgLoop :: Gen -> State Int Gen
-let rec msgLoop (u : Gen) : StateFunc<int, Gen> =
+// msgLoop :: Gen -> State NodeId Gen
+let rec msgLoop (u : Gen) : StateFunc<NodeId, Gen> =
     state {
     let u' = mergeSubexp u
     let! u'' = commonFunctor u'
@@ -83,7 +84,7 @@ let rec msgLoop (u : Gen) : StateFunc<int, Gen> =
     }
 
 // msg :: Exp -> Exp -> State Int Gen
-let msg (e1 : Exp) (e2 : Exp) : StateFunc<int, Gen> =
+let msg (e1 : Exp) (e2 : Exp) : StateFunc<NodeId, Gen> =
     state {
     let! k = freshName
     let u =
