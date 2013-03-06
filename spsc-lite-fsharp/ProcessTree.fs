@@ -127,7 +127,7 @@ let addChildren (tree : Tree) (nId : NodeId) (branches : Branch list) : StateFun
         let tree'' =
             List.zip chIds' chNodes
             |> IntMap.ofList
-            |> IntMap.append tree'
+            |> IntMap.union tree'
         return tree''
     }
 
