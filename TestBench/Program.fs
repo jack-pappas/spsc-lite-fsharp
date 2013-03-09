@@ -1,6 +1,4 @@
-﻿// Learn more about F# at http://fsharp.net
-
-// ToDo: samples 3 and 6 still don't work for AdvancedSuperCompiler. Additional debug is required.
+﻿// ToDo: samples 3 and 6 still don't work for AdvancedSuperCompiler. Additional debug is required.
 module Samples =
     let [<Literal>] target1 =
         "gApp(gApp(x, y), z)"
@@ -74,7 +72,7 @@ module Program =
 
     open Samples
 
-    let runBaseSuperCompiler (targetText, programText) =
+    let runBasicSuperCompiler (targetText, programText) =
         let program = SParsers.pProg programText
         let target = SParsers.pExp targetText
         let pt = Basic.buildProcessTree program target
@@ -97,6 +95,11 @@ module Program =
 
     [<EntryPoint>]
     let main args =
+        runBasicSuperCompiler Samples.sample1
+        runBasicSuperCompiler Samples.sample2
+        runBasicSuperCompiler Samples.sample3
+        runBasicSuperCompiler Samples.sample4
+        runAdvancedSuperCompiler Samples.sample5
         runAdvancedSuperCompiler Samples.sample7
 
         printf "Press ENTER to exit..."
