@@ -13,8 +13,8 @@ type Sigs = TagMap<NodeIdentifier, Sig>
 
 
 // isVarTest :: Tree -> Node -> Bool
-let isVarTest (tree : Tree) { nodeChildren = bChId :: _ } : bool =
-    (TagMap.find bChId tree).nodeContr
+let isVarTest (tree : Tree) { Children = bChId :: _ } : bool =
+    (TagMap.find bChId tree).Contr
     |> Option.isSome
 
 // getFGSig :: Tree -> String -> NodeId -> Name -> [Name] -> State (Sigs, [Rule]) Sig
@@ -47,14 +47,14 @@ let getChContr (tree : Tree) (nIds : NodeId list) : (Name * Name list) list =
     nIds
     |> List.choose (fun nId ->
         let child = TagMap.find nId tree
-        match child.nodeContr with
+        match child.Contr with
         | Some (Contraction (_, cname, cparams)) ->
             Some (cname, cparams)
         | _ ->
             None)
 
 // genResPrCall :: Tree -> Node -> Name -> [Exp] -> State (Sigs, [Rule]) Exp
-let rec genResPrCall (tree : Tree) ({ nodeId = bId; nodeExp = bE; nodeChildren = bChIds } as b) (name : Name) (args : Exp list)
+let rec genResPrCall (tree : Tree) ({ Id = bId; Exp = bE; Children = bChIds } as b) (name : Name) (args : Exp list)
     : StateFunc<Sigs * Rule list, Exp> =
     state {
     let ``params`` = vars bE
@@ -82,7 +82,7 @@ let rec genResPrCall (tree : Tree) ({ nodeId = bId; nodeExp = bE; nodeChildren =
     }
 
 // genResPrExp :: Tree -> Node -> State (Sigs, [Rule]) Exp
-and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
+and genResPrExp (tree : Tree) ({ Exp = bE; Children = bChIds } as b)
     : StateFunc<Sigs * Rule list, Exp> =
     state {
     match funcAncestors tree b with
@@ -103,7 +103,7 @@ and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
             let subst = Map.ofList (List.zip vnames es')
             return applySubst subst e'
 
-    | { nodeId = aId; nodeExp = aE; nodeContr = aC; nodeChildren = aChId :: _ } :: _ ->
+    | { Id = aId; Exp = aE; Contr = aC; Children = aChId :: _ } :: _ ->
         let! sigs, rules = State.getState
         let name, ``params`` = TagMap.find aId sigs
         let args = List.map Var ``params``
@@ -112,7 +112,7 @@ and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
             |> Option.get
 
         let callKind =
-            match (TagMap.find aChId tree).nodeContr with
+            match (TagMap.find aChId tree).Contr with
             | None -> FCall
             | Some _ -> GCall
 
