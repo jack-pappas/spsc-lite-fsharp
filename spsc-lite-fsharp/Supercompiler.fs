@@ -52,7 +52,7 @@ let lookupG (Program rules) (name : Name) : (Name * Params * Params * Exp) list 
 let rec drivingStep (prog : Program) (e : Exp) : StateFunc<NodeId, Branch list> =
     state {
     match e with
-    | Call (Ctr, name, args) ->
+    | Call (Ctor, name, args) ->
         return List.map (fun arg -> arg, None) args
     
     | Call (FCall, name, args) ->
@@ -61,7 +61,7 @@ let rec drivingStep (prog : Program) (e : Exp) : StateFunc<NodeId, Branch list> 
         let body' = applySubst p2a body
         return [(body', None)]
 
-    | Call (GCall, name, Call (Ctr, cname, cargs) :: args) ->
+    | Call (GCall, name, Call (Ctor, cname, cargs) :: args) ->
         let cparams, ``params``, body = lookupGC prog name cname
         let cp2ca = Map.ofList (List.zip cparams cargs)
         let p2a = Map.ofList (List.zip ``params`` args)
@@ -93,9 +93,9 @@ and driveBranch (prog : Program) (e : Exp) (vname : Name) (cname : Name) (cparam
     state {
     let! cparams' = freshNameList (List.length cparams)
     let cargs = List.map Var cparams'
-    let vname2ctr =
-        Map.ofList [(vname, Call (Ctr, cname, cargs))]
-    let e' = applySubst vname2ctr e
+    let vname2ctor =
+        Map.ofList [(vname, Call (Ctor, cname, cargs))]
+    let e' = applySubst vname2ctor e
     let! [(e'', None)] = drivingStep prog e'
     return (e'', Some <| Contraction (vname, cname, cparams'))
     }

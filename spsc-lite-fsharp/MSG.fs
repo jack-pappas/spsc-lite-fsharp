@@ -60,12 +60,12 @@ let commonFunctor (Gen (e, m1, m2) as u) : StateFunc<NodeId, Gen> =
     match kes with
     | [] ->
         return u
-    | (k, (Call (ctr, name, args1) as e1)) :: _ ->
+    | (k, (Call (ctor, name, args1) as e1)) :: _ ->
         let (Call (_,_,args2) as e2) = Map.find k m2
         let! ns = freshNameList (List.length args1)
         let vs = List.map Var ns
         let e' =
-            let m = Map.add k (Call (ctr, name, vs)) Map.empty
+            let m = Map.add k (Call (ctor, name, vs)) Map.empty
             applySubst m e
         let m1' = Map.union (Map.remove k m1) (Map.ofList <| List.zip ns args1)
         let m2' = Map.union (Map.remove k m2) (Map.ofList <| List.zip ns args2)

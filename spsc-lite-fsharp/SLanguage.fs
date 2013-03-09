@@ -6,7 +6,7 @@ open ShowUtil
 
 //
 [<NoComparison>]
-type CKind = Ctr | FCall | GCall
+type CKind = Ctor | FCall | GCall
 
 type Name = string
 type Params = Name list
@@ -15,7 +15,7 @@ type Params = Name list
 [<NoComparison>]
 type Exp =
     | Var of Name
-    | Call of CKind * Name * Args
+    | Call of CKind * Name * Exps
     | Let of Exp * (Name * Exp) list
 
     override this.ToString () =
@@ -27,8 +27,7 @@ type Exp =
         | Let (e, bindings) ->
             "let " + showBindings bindings + " in " + e.ToString ()
 
-and Arg = Exp
-and Args = Arg list
+and Exps = Exp list
 
 type Rule =
     | FRule of Name * Params * Exp

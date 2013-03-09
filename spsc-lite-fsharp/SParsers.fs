@@ -6,162 +6,75 @@ open SLanguage
 open ShowUtil
 
 
+//let ws  = spaces // skips any whitespace
+//let ch  c = skipChar c >>. ws
+//let str s = skipString s >>. ws
+//let space:Parser<unit,unit> = whitespace |>> ignore
+//let spacing:Parser<unit,unit> = skipManyChars space
+
 let ch c = skipChar c >>. spaces
 let str s = skipString s >>. spaces
 
 let ident predicate =
     let firstChar = satisfy (fun c -> isAsciiLetter c && predicate c)
     let restChars = satisfy (fun c -> isAsciiLetter c || isDigit c)
-    let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString() + s)
-    p .>> spaces
+    let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString () + s)
+    //(p .>> ws) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
+    (p .>> spaces) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
 
-let uIdent : Parser<string, unit> =
-    ident isUpper <?> "uIdent"
+let uid : Parser<string, unit> = ident isUpper
+let lid : Parser<string, unit> = ident isLower
+let fid : Parser<string, unit> = ident ((=) 'f')
+let gid : Parser<string, unit> = ident ((=) 'g')
 
-let lIdent : Parser<string, unit> =
-    ident isLower <?> "lIdent"
+let pat =
+    pipe2 uid
+        (ch '(' >>. (sepBy lid (ch ',')) .>> ch ')')
+        (fun u vs -> u, vs)
 
-let fIdent : Parser<string, unit> =
-    ident ((=) 'f') <?> "fIdent"
+// NOTE : We have to explicitly define, then apply, an argument value here
+// (basically, eta-expand the term) to avoid issues with recursive initialization.
+let rec expr (str : FParsec.CharStream<_>) =
+    (ctor <|> (fcall <|> gcall <|> (lid |>> Var))) str
 
-let gIdent : Parser<string, unit> =
-    ident ((=) 'g') <?> "gIdent"
+and ctor =
+    pipe2 uid
+        (ch '(' >>. (sepBy expr (ch ',')) .>> ch ')')
+        (fun u ts -> Call (Ctor, u, ts))
+and fRule =
+    pipe3 fid
+        (between (ch '(') (ch ')') (sepBy lid (ch ',')))
+        (between (ch '=') (ch ';') expr)
+        (fun functionName paramList ruleRhs ->
+            FRule (functionName, paramList, ruleRhs))
+and gRule =
+    pipe4 gid
+        (ch '(' >>. pat)
+        ((many (ch ',' >>. lid)) .>> ch ')')
+        (between (ch '=') (ch ';') expr)
+        (fun functionName (cname, cparamList) paramList ruleRhs ->
+            GRule (functionName, cname, cparamList, paramList, ruleRhs))
+and fcall =
+    pipe2 fid
+        (between (ch '(') (ch ')') (sepBy expr (ch ',')))
+        (fun name argList ->
+            Call (FCall, name, argList))
+and gcall =
+    pipe2 gid
+        (between (ch '(') (ch ')') (sepBy expr (ch ',')))
+        (fun name argList ->
+            Call (GCall, name, argList))
 
+let rule = gRule <|> fRule
 
-(* Programs *)
+let prog = spaces >>. (many rule)
 
-// pattern :: Parser (Name, Params)
-let pattern : Parser<Name * Params, unit> =
-    parse {
-    let! constructorName = uIdent
-    let! variableList =
-        (ch '(' >>. (sepBy lIdent (ch ',')) .>> ch ')')
-//        sepBy lIdent (skipChar ',')
-//        |> between (skipChar '(') (skipChar ')')
-        <|>% []
-    return (constructorName, variableList)
-    }
-    <?> "pattern"
+let pExp str =
+    match run expr str with
+    | Success(r, _, _) -> r
+    | Failure(str, exn, _) -> failwith str
 
-//
-let rec ``constructor`` =
-    parse {
-    let! ctrName = uIdent
-    let! argList =
-        (ch '(' >>. (sepBy expression (ch ',')) .>> ch ')')
-//        sepBy expression (skipChar ',')
-//        |> between (skipChar '(') (skipChar ')')
-        <|>% []
-    return Call (Ctr, ctrName, argList)
-    }
-    <?> "constructor"
-
-//
-and variableOrFunctionCall =
-    parse {
-    let! name = lIdent
-    let! argList =
-        (ch '(' >>. (sepBy expression (ch ',')) .>> ch ')')
-//        sepBy1 expression (skipChar ',')
-//        |> between (skipChar '(') (skipChar ')')
-    match name.[0] with
-    | 'f' ->
-        return Call (FCall, name, argList)
-    | 'g' ->
-        return Call (GCall, name, argList)
-    | _ ->
-        return Var name
-    }
-    <?> "variableOrFunctionCall"
-
-//
-and expression =
-    ``constructor`` <|> variableOrFunctionCall
-    <?> "expression"
-
-//
-let fRule =
-    parse {
-    let! functionName = fIdent
-    let! paramList =
-        (ch '(' >>. (sepBy1 lIdent (ch ',')) .>> ch ')')
-//        sepBy1 lIdent (skipChar ',')
-//        |> between (skipChar '(') (skipChar ')')
-    do! skipChar '='
-    let! ruleRhs = expression
-    do! skipChar ';'
-    return FRule (functionName, paramList, ruleRhs)
-    }
-    <?> "fRule"
-
-//
-let gRule =
-    parse {
-    let! functionName = gIdent
-    do! skipChar '('
-    let! cname, cparamList = pattern
-    let! paramList =
-        many <| parse {
-        do! skipChar ','
-        return! lIdent
-        }
-        <?> "paramList"
-    do! skipChar ')'
-    do! skipChar '='
-    let! ruleRhs = expression
-    do! skipChar ';'
-    return GRule (functionName, cname, cparamList, paramList, ruleRhs)
-    }
-    <?> "gRule"
-
-let rule =
-    fRule <|> gRule <?> "rule"
-
-// program :: Parser Program
-let program = parse {
-    let! ruleList = spaces >>. many rule
-    do! eof
-    return Program ruleList
-    }
-
-// run :: Show a => Parser a -> String -> IO ()
-let run' p input =
-    match run p input with
-    | Failure (errorString, error, state) ->
-        printfn "Parse error at %O" error
-    | Success (result, userState, endPos) ->
-        printfn "%O" result
-
-let parseSLL =
-    run' program
-
-let pProg input =
-    match run program input with
-    | Success (result, _, _) ->
-        result
-    | Failure (errorString, error, _) ->
-        let ex =
-            System.Exception (
-                sprintf "Parse error at line %i, column %i: %s"
-                    error.Position.Line error.Position.Column errorString)
-        
-        ex.Data.Add ("Messages",
-            FParsec.ErrorMessageList.ToSortedArray error.Messages)
-        //ex.Data.Add ("UserState", error.UserState)
-
-        raise ex
-
-let pExp input =
-    match run expression input with
-    | Success (result, _, _) ->
-        result
-    | Failure (errorString, error, _) ->
-        let ex =
-            System.Exception (
-                sprintf "Parse error at line %i, column %i: %s"
-                    error.Position.Line error.Position.Column errorString)
-        ex.Data.Add ("Messages",
-            FParsec.ErrorMessageList.ToSortedArray error.Messages)
-        //ex.Data.Add ("UserState", error.UserState)
-
-        raise ex
+let pProg str =
+    match run prog str with
+    | Success(r, _, _) -> Program r
+    | Failure(str, exn, _) -> failwith str

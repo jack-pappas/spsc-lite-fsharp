@@ -90,9 +90,9 @@ and genResPrExp (tree : Tree) ({ nodeExp = bE; nodeChildren = bChIds } as b)
         match bE with
         | Var _ ->
             return bE
-        | Call (Ctr, cname, _) ->
+        | Call (Ctor, cname, _) ->
             let! es = genResPrExps tree bChIds
-            return Call (Ctr, cname, es)
+            return Call (Ctor, cname, es)
         | Call (FCall, name, args)
         | Call (GCall, name, args) ->        
             return! genResPrCall tree b name args

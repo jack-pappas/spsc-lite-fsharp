@@ -49,7 +49,7 @@ let isProcessed (tree : Tree) node =
         true
     | Let (_,_) ->
         false
-    | Call (Ctr, _, args) ->
+    | Call (Ctor, _, args) ->
         List.isEmpty args
     | Call (_,_,_) ->
         funcAncestors tree node
