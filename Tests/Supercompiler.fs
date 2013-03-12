@@ -14,7 +14,7 @@ open Supercompiler
 let private testBuildPrTree prog e =
     Basic.buildProcessTree (pProg prog) (pExp e)
 
-let private buildStart (buildStep : Program -> _ -> _ -> StateFunc<int, _>) prog tree =
+let private buildStart (buildStep : Program -> _ -> _ -> StateFunc<Algebra.NodeId, _>) prog tree =
     state {
     match unprocessedNodes tree with
     | [] ->
@@ -25,13 +25,13 @@ let private buildStart (buildStep : Program -> _ -> _ -> StateFunc<int, _>) prog
     }
 
 let private buildPrTree1 prog e =
-    (State.evaluate <| buildStart Basic.buildStep prog (initTree e)) 10000
+    (State.evaluate <| buildStart Basic.buildStep prog (initTree e)) 10000<_>
 
 let private testBuildPrTree1 prog e =
     buildPrTree1 (pProg prog) (pExp e)
 
 let private buildPrTree1Adv prog e =
-    (State.evaluate <| buildStart Advanced.buildStep prog (initTree e)) 10000
+    (State.evaluate <| buildStart Advanced.buildStep prog (initTree e)) 10000<_>
 
 let private testBPT1Adv prog e =
     buildPrTree1Adv (pProg prog) (pExp e)
@@ -41,7 +41,7 @@ let [<Literal>] private pAddAcc = "gAddAcc(Z,y)=y;gAddAcc(S(x),y)=gAddAcc(x,S(y)
 
 
 let private runDrStep prog e =
-    (State.evaluate <| drivingStep prog e) 100
+    (State.evaluate <| drivingStep prog e) 100<_>
 
 (*
 
@@ -85,7 +85,7 @@ let drStepTest (prog, e) =
 // TODO : Can this test be modified into a test case for 'drStepTest'?
 let ``Let`` () =
     Let (
-        Call (Ctr, "C", [Var "x"; Var "y"]),
+        Call (Ctor, "C", [Var "x"; Var "y"]),
         [("x", Var "a"); ("y", Var "b")])
     |> runDrStep (Program [])
     |> sprintf "%O"

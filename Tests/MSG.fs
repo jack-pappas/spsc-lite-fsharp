@@ -12,7 +12,7 @@ open MSG
 
 
 let private evalMSG e1 e2 =
-    (State.evaluate <| msg e1 e2) 10000
+    (State.evaluate <| msg e1 e2) 10000<_>
 
 [<Test>]
 [<TestCase(

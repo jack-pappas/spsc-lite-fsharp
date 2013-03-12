@@ -12,11 +12,11 @@ let ``Test ToString of Var and Call.`` () =
     |> sprintf "%O"
     |> should equal "x"
     
-    Call (Ctr, "A", [Var "x"; Var "y"])
+    Call (Ctor, "A", [Var "x"; Var "y"])
     |> sprintf "%O"
     |> should equal "A(x,y)"
 
-    Call (Ctr, "C", [])
+    Call (Ctor, "C", [])
     |> sprintf "%O"
     |> should equal "C()"
 
