@@ -1,6 +1,5 @@
 ﻿module Algebra
 
-open ExtCore
 open ExtCore.Control
 open SLanguage
 

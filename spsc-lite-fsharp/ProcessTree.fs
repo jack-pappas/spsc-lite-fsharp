@@ -1,7 +1,5 @@
 ﻿module ProcessTree
 
-open ExtCore
-open ExtCore.Collections
 open ExtCore.Control
 open SLanguage
 open ShowUtil

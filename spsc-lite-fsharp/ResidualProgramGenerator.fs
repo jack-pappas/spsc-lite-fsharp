@@ -1,7 +1,5 @@
 ﻿module ResidualProgramGenerator
 
-open ExtCore
-open ExtCore.Collections
 open ExtCore.Control
 open ExtCore.Control.Collections
 open Algebra

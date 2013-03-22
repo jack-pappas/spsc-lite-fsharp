@@ -1,8 +1,6 @@
 ﻿/// Most Specific Generalization.
 module MSG
 
-open ExtCore
-open ExtCore.Collections
 open ExtCore.Control
 open SParsers
 open SLanguage
