@@ -1,51 +1,17 @@
-#OS junk files
-[Tt]humbs.db
+###############################################################################
+# General (non-project-specific) patterns
+###############################################################################
+
+# OS junk files
 *.DS_Store
+[Tt]humbs.db
 
-#Visual Studio files
-*.[Oo]bj
-*.exe
-*.pdb
-*.user
-*.aps
-*.pch
-*.vspscc
-*.vssscc
-*_i.c
-*_p.c
-*.ncb
-*.suo
-*.tlb
-*.tlh
-*.bak
-*.[Cc]ache
-*.ilk
-*.log
-*.lib
-*.sbr
-*.sdf
-*.opensdf
-*.resources
-*.res
-ipch/
-obj/
-[Bb]in
-[Dd]ebug*/
-[Rr]elease*/
-[Dd]eploy*/
-Ankh.NoLoad
-*.gpState
+# Temp Files
+*~                                                  # UNIX
+~$*                                                 # Microsoft Office
 
-#Tooling
-_ReSharper*/
-*.resharper
-[Tt]est[Rr]esult*
-*.nvuser
-
-#Project files
-#[Bb]uild/
-
-#Subversion files
+# Bindings for other source-control systems.
+.hg
 .svn
 
 # NuGet
@@ -53,6 +19,66 @@ _ReSharper*/
 [Pp]ackages/*
 ![Pp]ackages/repositories.config
 
-# Office Temp Files
-~$*
+# .NET / Visual Studio (Folders)
+ipch/
+obj/
+[Bb]in
+[Dd]ebug*/
+[Rr]elease*/
 
+# .NET / Visual Studio (Files)
+*_i.c
+*_p.c
+*.aps
+*.bak
+*.[Cc]ache
+*.exe
+*.gpState
+*.ilk
+*.log
+*.lib
+*.ncb
+*.[Oo]bj
+*.opensdf
+*.pch
+*.pdb
+*.res
+*.resources
+*.sbr
+*.sdf
+*.sln.cache
+*.suo
+*.tlb
+*.tlh
+*.user
+*.vspscc
+*.vssscc
+Ankh.NoLoad
+
+# Visual Studio (Project Upgrade)
+Backup/
+_UpgradeReport_Files/
+UpgradeLog.htm
+UpgradeLog.XML
+
+# Test Results
+[Tt]est[Rr]esult*
+TestResults/
+TestResult.xml
+
+# 3rd-party Tools
+_ReSharper*/
+*.nvuser
+*.resharper
+*resharper.user
+
+# Build Output
+#pkg
+#[Bb]uild
+
+
+###############################################################################
+# Project-specific patterns
+###############################################################################
+
+## Add project-specific patterns here, as necessary.
