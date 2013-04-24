@@ -1,16 +1,16 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SPSC-Lite-FSharp", "spsc-lite-fsharp\SPSC-Lite-FSharp.fsproj", "{78607BBC-6066-4807-A681-690C6A3A6A50}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{65956B61-6559-42C0-AFDD-DDF0AF066DEA}"
-EndProject
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{9E19ED83-31A5-4954-B5A6-478E65DA30FB}"
 	ProjectSection(SolutionItems) = preProject
 		.nuget\NuGet.Config = .nuget\NuGet.Config
 		.nuget\NuGet.exe = .nuget\NuGet.exe
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SPSC-Lite-FSharp", "spsc-lite-fsharp\SPSC-Lite-FSharp.fsproj", "{78607BBC-6066-4807-A681-690C6A3A6A50}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{65956B61-6559-42C0-AFDD-DDF0AF066DEA}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestBench", "TestBench\TestBench.fsproj", "{9C5FD31F-2207-4E01-924F-A0AF5E23FB6F}"
 EndProject
