@@ -90,6 +90,6 @@ let freshName : StateFunc<NodeId, string> =
 let freshNameList n : StateFunc<NodeId, string list> =
     state {
     let! t = State.getState
-    do! State.setState (t + Tag.ofInt n)
-    return List.map mkName [Tag.toInt t .. (Tag.toInt t + n - 1)]
+    do! State.setState (t + tag n)
+    return List.map mkName [untag t .. (untag t + n - 1)]
     }

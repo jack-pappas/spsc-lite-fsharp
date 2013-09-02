@@ -98,13 +98,13 @@ let freshNodeId =
 let freshNodeIdList (n : int) =
     state {
     let! (t : NodeId) = State.getState
-    do! State.setState (t + Tag.ofInt n)
+    do! State.setState (t + tag n)
     return
-        [Tag.toInt t .. (Tag.toInt t + n - 1)]
+        [untag t .. (untag t + n - 1)]
         // HACK : The F# 2.0 (and maybe 3.0) compiler doesn't seem to
         // allow list comprehensions over ranges of tagged integers,
         // so we have to convert the list like this (which causes unnecessary overhead).
-        |> List.map Tag.ofInt
+        |> List.map tag
     }
 
 // addChildren :: Tree -> NodeId -> [Branch] -> State NodeId Tree
