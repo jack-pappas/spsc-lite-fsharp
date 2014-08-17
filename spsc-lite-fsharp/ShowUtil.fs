@@ -44,8 +44,4 @@ and showBindingsTail (bindings : (string * _) list) : string =
 
 // showPat :: String -> [String] -> String
 let showPat cname cparams =
-    match cparams with
-    | [] ->
-        cname
-    | cparams ->
-        cname + "(" + showParams cparams + ")"
+    cname + "(" + showParams cparams + ")"
