@@ -4,142 +4,152 @@ module Tests.SPSC.SLanguage
 open NUnit.Framework
 open SLanguage
 
-module Printing =
-    [<Test>]
-    let expression () =
-        (* Var *)
-        Var "x"
-        |> string
-        |> assertEqual "x"
-    
+
+/// Expressions and their string representations.
+let expressions () =
+    [|  (* Var *)
+        "x", Var "x";
+
         (* Call *)
-        Call (Ctor, "A", [Var "x"; Var "y"])
-        |> string
-        |> assertEqual "A(x,y)"
-
-        Call (Ctor, "C", [])
-        |> string
-        |> assertEqual "C()"
-
-        Call (FCall, "fX", [Var "x"; Var "y"])
-        |> string
-        |> assertEqual "fX(x,y)"
-
-        Call (GCall, "gX", [Var "x"; Var "y"])
-        |> string
-        |> assertEqual "gX(x,y)"
+        "A(x,y)", Call (Ctor, "A", [Var "x"; Var "y"]);
+        "C()", Call (Ctor, "C", []);
+        "fX(x,y)", Call (FCall, "fX", [Var "x"; Var "y"]);
+        "gX(x,y)", Call (GCall, "gX", [Var "x"; Var "y"]);
 
         (* Let *)
-        Let (Var "y", ["x", Var "y"])
-        |> string
-        |> assertEqual "let x=y in y"
-        
-        Let (Var "x", ["x", Var "a"; "y", Var "b"])
-        |> string
-        |> assertEqual "let x=a,y=b in x"
-        
-    [<Test>]
-    let rule () =
-        (* FRule *)
-        FRule ("f", ["x"; "y"], Var "y")
-        |> string
-        |> assertEqual "f(x,y)=y;"
-    
-        (* GRule *)
-        GRule ("g", "C", ["x"], ["y"], Var "y")
-        |> string
-        |> assertEqual "g(C(x),y)=y;"
-    
-        GRule ("g", "C", [], ["y"], Var "y")
-        |> string
-        |> assertEqual "g(C(),y)=y;"
-    
-        GRule ("g", "C", [], [], Call (Ctor, "C", []))
-        |> string
-        |> assertEqual "g(C())=C();"
+        "let x=y in y", Let (Var "y", ["x", Var "y"]);
+        "let x=a,y=b in x", Let (Var "x", ["x", Var "a"; "y", Var "b"]);
+    |]
 
-    [<Test>]
-    let program () =
+/// Rules and their string representations.
+let rules () =
+    [|  (* FRule *)
+        "f(x,y)=y;", FRule ("f", ["x"; "y"], Var "y");
+
+        (* GRule *)
+        "g(C(x),y)=y;", GRule ("g", "C", ["x"], ["y"], Var "y");
+        "g(C(),y)=y;", GRule ("g", "C", [], ["y"], Var "y");
+        "g(C())=C();", GRule ("g", "C", [], [], Call (Ctor, "C", []));
+    |]
+
+/// Programs and their string representations.
+let programs () =
+    [|  "f()=A();f1()=A1();",
         Program [
             FRule("f", [], Call (Ctor, "A", [])); 
-            FRule("f1", [], Call (Ctor, "A1", [])); ]
-        |> string
-        |> assertEqual "f()=A();f1()=A1();"
+            FRule("f1", [], Call (Ctor, "A1", [])); ];
 
+        "g(C())=A();g1(C(),x)=A();g2(C(x))=A();",
         Program [
             GRule("g", "C", [], [], Call (Ctor, "A", []));
             GRule("g1", "C", [], ["x"], Call (Ctor, "A", []));
-            GRule("g2", "C", ["x"], [], Call (Ctor, "A", [])); ]
+            GRule("g2", "C", ["x"], [], Call (Ctor, "A", [])); ];
+    |]
+
+
+module Printing =
+    /// Test-case source for Exp (expression) printing.
+    type private ExpPrintingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                expressions ()
+                |> Seq.mapi (fun idx (str, expr) ->
+                    let data = TestCaseData (expr, str)
+                    data.SetName (sprintf "Exp #%i" idx))
+                :> System.Collections.IEnumerable
+
+    [<Test(Description = "Tests for printing Exp (expression) instances.")>]
+    [<TestCaseSource(typeof<ExpPrintingTestCases>, "Items")>]
+    let expression (expr : Exp, expectedStr) =
+        expr
         |> string
-        |> assertEqual "g(C())=A();g1(C(),x)=A();g2(C(x))=A();"
+        |> assertEqual expectedStr
+
+    /// Test-case source for Rule printing.
+    type private RulePrintingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                rules ()
+                |> Seq.mapi (fun idx (str, rule) ->
+                    let data = TestCaseData (rule, str)
+                    data.SetName (sprintf "Rule #%i" idx))
+                :> System.Collections.IEnumerable
+
+    [<Test(Description = "Tests for printing Rule instances.")>]
+    [<TestCaseSource(typeof<RulePrintingTestCases>, "Items")>]
+    let rule (rule : Rule, expectedStr) =
+        rule
+        |> string
+        |> assertEqual expectedStr
+        
+    /// Test-case source for Program printing.
+    type private ProgramPrintingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                programs ()
+                |> Seq.mapi (fun idx (str, prog) ->
+                    let data = TestCaseData (prog, str)
+                    data.SetName (sprintf "Program #%i" idx))
+                :> System.Collections.IEnumerable
+
+    [<Test(Description = "Tests for printing Program instances.")>]
+    [<TestCaseSource(typeof<ProgramPrintingTestCases>, "Items")>]
+    let program (prog : Program, expectedStr) =
+        prog
+        |> string
+        |> assertEqual expectedStr
 
 
 module Parsing =
     open SParsers
     
-    [<Test>]
-    let expression () : unit =
-        "x"
-        |> pExp
-        |> assertEqual (Var "x")
+    /// Test-case source for Exp (expression) parsing.
+    type private ExpParsingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                expressions ()
+                |> Seq.mapi (fun idx (str, expr) ->
+                    let data = TestCaseData (str, expr)
+                    data.SetName (sprintf "Exp #%i" idx))
+                :> System.Collections.IEnumerable
 
-        "A(x,y)"
+    [<Test(Description = "Tests for parsing Exp (expression) instances.")>]
+    [<TestCaseSource(typeof<ExpParsingTestCases>, "Items")>]
+    let expression (str, expectedExp : Exp) =
+        str
         |> pExp
-        |> assertEqual (Call (Ctor, "A", [Var "x"; Var "y"]))
+        |> assertEqual expectedExp
 
-        "C()"
-        |> pExp
-        |> assertEqual (Call (Ctor, "C", []))
+    /// Test-case source for Rule parsing.
+    type private RuleParsingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                rules ()
+                |> Seq.mapi (fun idx (str, rule) ->
+                    let data = TestCaseData (str, rule)
+                    data.SetName (sprintf "Rule #%i" idx))
+                :> System.Collections.IEnumerable
 
-        "fX(x,y)"
-        |> pExp
-        |> assertEqual (Call (FCall, "fX", [Var "x"; Var "y"]))
-
-        "gX(x,y)"
-        |> pExp
-        |> assertEqual (Call (GCall, "gX", [Var "x"; Var "y"]))
-
-        "let x=y in y"
-        |> pExp
-        |> assertEqual (Let (Var "y", ["x", Var "y"]))
-
-        "let x=a,y=b in x"
-        |> pExp
-        |> assertEqual (Let (Var "x", ["x", Var "a"; "y", Var "b"]))
-
-    [<Test>]
-    let rule () =
-        (* FRule *)
-        "f(x,y)=y;"
+    [<Test(Description = "Tests for parsing Rule instances.")>]
+    [<TestCaseSource(typeof<RuleParsingTestCases>, "Items")>]
+    let rule (str, expectedRule : Rule) =
+        str
         |> pRule
-        |> assertEqual (FRule ("f", ["x"; "y"], Var "y"))
-    
-        (* GRule *)
-        "g(C(x),y)=y;"
-        |> pRule
-        |> assertEqual (GRule ("g", "C", ["x"], ["y"], Var "y"))
-    
-        "g(C(),y)=y;"
-        |> pRule
-        |> assertEqual (GRule ("g", "C", [], ["y"], Var "y"))
-    
-        "g(C())=C();"
-        |> pRule
-        |> assertEqual (GRule ("g", "C", [], [], Call (Ctor, "C", [])))
+        |> assertEqual expectedRule
+        
+    /// Test-case source for Program parsing.
+    type private ProgramParsingTestCases () =
+        member __.Items
+            with get () : System.Collections.IEnumerable =
+                programs ()
+                |> Seq.mapi (fun idx (str, prog) ->
+                    let data = TestCaseData (str, prog)
+                    data.SetName (sprintf "Program #%i" idx))
+                :> System.Collections.IEnumerable
 
-    [<Test>]
-    let program () =
-        "f()=A();f1()=A1();"
+    [<Test(Description = "Tests for parsing Program instances.")>]
+    [<TestCaseSource(typeof<ProgramParsingTestCases>, "Items")>]
+    let program (str, expectedProg : Program) =
+        str
         |> pProg
-        |> assertEqual
-        <| Program [
-            FRule("f", [], Call (Ctor, "A", [])); 
-            FRule("f1", [], Call (Ctor, "A1", [])); ]
-
-        "g(C())=A();g1(C(),x)=A();g2(C(x))=A();"
-        |> pProg
-        |> assertEqual
-        <| Program [
-            GRule("g", "C", [], [], Call (Ctor, "A", []));
-            GRule("g1", "C", [], ["x"], Call (Ctor, "A", []));
-            GRule("g2", "C", ["x"], [], Call (Ctor, "A", [])); ]
+        |> assertEqual expectedProg
