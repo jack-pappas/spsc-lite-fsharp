@@ -1,8 +1,7 @@
 ﻿[<NUnit.Framework.TestFixture>]
-module Supercompiler.Tests
+module Tests.SPSC.Supercompiler
 
 open NUnit.Framework
-open FsUnit
 open ExtCore
 open ExtCore.Control
 
@@ -89,7 +88,7 @@ let ``Let`` () =
         [("x", Var "a"); ("y", Var "b")])
     |> runDrStep (Program [])
     |> sprintf "%O"
-    |> should equal
+    |> assertEqual
         "[(C(x,y),Nothing),(a,Nothing),(b,Nothing)]"
 
 

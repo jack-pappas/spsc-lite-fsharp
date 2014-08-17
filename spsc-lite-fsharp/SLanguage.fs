@@ -15,7 +15,7 @@ type Params = Name list
 [<NoComparison>]
 type Exp =
     | Var of Name
-    | Call of CKind * Name * Exps
+    | Call of CKind * Name * Args
     | Let of Exp * (Name * Exp) list
 
     override this.ToString () =
@@ -27,7 +27,8 @@ type Exp =
         | Let (e, bindings) ->
             "let " + showBindings bindings + " in " + e.ToString ()
 
-and Exps = Exp list
+and Arg = Exp
+and Args = Arg list
 
 type Rule =
     | FRule of Name * Params * Exp

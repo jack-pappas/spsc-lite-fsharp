@@ -1,8 +1,7 @@
 ﻿[<NUnit.Framework.TestFixture>]
-module ResidualProgramGenerator.Tests
+module Tests.SPSC.ResidualProgramGenerator
 
 open NUnit.Framework
-open FsUnit
 
 open ResidualProgramGenerator
 open SLanguage

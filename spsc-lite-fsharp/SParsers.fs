@@ -69,12 +69,39 @@ let rule = gRule <|> fRule
 
 let prog = spaces >>. (many rule)
 
+//
+let private createParserExn str (ex : FParsec.Error.ParserError) =
+    let innerExn =
+        let msg =
+            let msg = sprintf "Parsing error at position %O." ex.Position
+            let sb = System.Text.StringBuilder (msg)
+            let mutable msgs = ex.Messages
+
+            if msgs <> null then
+                sb.AppendLine " Messages:" |> ignore
+                while msgs <> null && msgs.Head <> null do
+                    sb.Append("    ") |> ignore
+                    sb.AppendLine (msgs.Head.ToString ()) |> ignore
+                    msgs <- msgs.Tail
+            sb.ToString()
+        exn msg
+
+    System.Exception (str, innerExn)
+
 let pExp str =
     match run expr str with
     | Success(r, _, _) -> r
-    | Failure(str, exn, _) -> failwith str
+    | Failure(str, ex, _) ->
+        raise <| createParserExn str ex
+
+let pRule str =
+    match run rule str with
+    | Success(r, _, _) -> r
+    | Failure(str, ex, _) ->
+        raise <| createParserExn str ex
 
 let pProg str =
     match run prog str with
     | Success(r, _, _) -> Program r
-    | Failure(str, exn, _) -> failwith str
+    | Failure(str, ex, _) ->
+        raise <| createParserExn str ex

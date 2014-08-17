@@ -1,8 +1,7 @@
 ﻿[<NUnit.Framework.TestFixture>]
-module MSG.Tests
+module Tests.SPSC.MSG
 
 open NUnit.Framework
-open FsUnit
 open ExtCore
 open ExtCore.Control
 
