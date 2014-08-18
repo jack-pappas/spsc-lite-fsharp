@@ -4,14 +4,12 @@ module SLanguage
 open System
 open ShowUtil
 
-//
 [<NoComparison>]
 type CKind = Ctor | FCall | GCall
 
 type Name = string
 type Params = Name list
 
-//
 [<NoComparison>]
 type Exp =
     | Var of Name

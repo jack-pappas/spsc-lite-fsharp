@@ -36,7 +36,7 @@ let rules () =
 let programs () =
     [|  "f()=A();f1()=A1();",
         Program [
-            FRule("f", [], Call (Ctor, "A", [])); 
+            FRule("f", [], Call (Ctor, "A", []));
             FRule("f1", [], Call (Ctor, "A1", [])); ];
 
         "g(C())=A();g1(C(),x)=A();g2(C(x))=A();",
