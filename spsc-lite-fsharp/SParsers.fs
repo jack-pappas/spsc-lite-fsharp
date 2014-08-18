@@ -5,69 +5,100 @@ open FParsec.CharParsers
 open SLanguage
 open ShowUtil
 
+(* Parser helpers *)
 
-//let ws  = spaces // skips any whitespace
-//let ch  c = skipChar c >>. ws
-//let str s = skipString s >>. ws
-//let space:Parser<unit,unit> = whitespace |>> ignore
-//let spacing:Parser<unit,unit> = skipManyChars space
+/// Ignore whitespace on either side of the specified parser.
+let ignoreWhitespace parser =
+    spaces >>. parser .>> spaces
 
-let ch c = skipChar c >>. spaces
-let str s = skipString s >>. spaces
+/// Parses a string surrounded by parentheses.
+let parens parser =
+    between (pstring "(") (pstring ")") parser
 
+/// Parses a comma-separated list surrounded by parentheses.
+let parensList parser =
+    parens (sepBy parser (pstring ","))
+
+/// Parse an identifier whose first character matches the given predicate.
 let ident predicate =
     let firstChar = satisfy (fun c -> isAsciiLetter c && predicate c)
     let restChars = satisfy (fun c -> isAsciiLetter c || isDigit c)
     let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString () + s)
-    //(p .>> ws) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
     (p .>> spaces) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
 
-let uid : Parser<string, unit> = ident isUpper
+
+/// Parses a variable identifier.
 let lid : Parser<string, unit> = ident isLower
+/// Parses a constructor (Ctor) identifier.
+let uid : Parser<string, unit> = ident isUpper
+/// Parses an FCall identifier.
 let fid : Parser<string, unit> = ident ((=) 'f')
+/// Parses a GCall identifier.
 let gid : Parser<string, unit> = ident ((=) 'g')
 
-let pat =
-    pipe2 uid
-        (ch '(' >>. (sepBy lid (ch ',')) .>> ch ')')
-        (fun u vs -> u, vs)
 
-// NOTE : We have to explicitly define, then apply, an argument value here
-// (basically, eta-expand the term) to avoid issues with recursive initialization.
-let rec expr (str : FParsec.CharStream<_>) =
-    (ctor <|> (fcall <|> gcall <|> (lid |>> Var))) str
+/// Parses an Exp (expression).
+let expr =
+    // NOTE : We have to explicitly define, then apply, an argument value here
+    // (basically, eta-expand the term) to avoid issues with recursive initialization.
+    // TODO : The definition of 'expr' below doesn't handle 'let ... in ...' patterns, so that needs to be implemented.
+    let rec expr (str : FParsec.CharStream<_>) =
+        let expr = ctor <|> fcall <|> gcall <|> letBinding <|> var
+        expr str
 
-and ctor =
-    pipe2 uid
-        (ch '(' >>. (sepBy expr (ch ',')) .>> ch ')')
-        (fun u ts -> Call (Ctor, u, ts))
-and fRule =
-    pipe3 fid
-        (between (ch '(') (ch ')') (sepBy lid (ch ',')))
-        (between (ch '=') (ch ';') expr)
-        (fun functionName paramList ruleRhs ->
-            FRule (functionName, paramList, ruleRhs))
-and gRule =
-    pipe4 gid
-        (ch '(' >>. pat)
-        ((many (ch ',' >>. lid)) .>> ch ')')
-        (between (ch '=') (ch ';') expr)
-        (fun functionName (cname, cparamList) paramList ruleRhs ->
-            GRule (functionName, cname, cparamList, paramList, ruleRhs))
-and fcall =
-    pipe2 fid
-        (between (ch '(') (ch ')') (sepBy expr (ch ',')))
-        (fun name argList ->
-            Call (FCall, name, argList))
-and gcall =
-    pipe2 gid
-        (between (ch '(') (ch ')') (sepBy expr (ch ',')))
-        (fun name argList ->
-            Call (GCall, name, argList))
+    (* Var *)
+    and var =
+        lid |>> Var
 
-let rule = gRule <|> fRule
+    (* Call *)
+    and ctor =
+        pipe2 uid (parensList expr)
+            (fun u ts -> Call (Ctor, u, ts))
 
-let prog = spaces >>. (many rule)
+    and fcall =
+        pipe2 fid (parensList expr)
+            (fun name argList ->
+                Call (FCall, name, argList))
+
+    and gcall =
+        pipe2 gid (parensList expr)
+            (fun name argList ->
+                Call (GCall, name, argList))
+
+    (* Let *)
+    and letBinding =
+        // TEMP : Until this is implemented properly, fail fatally if we see the "let" keyword.
+        pstring "let" >>. failFatally "The parser does not yet support 'let' bindings."
+
+    // Return the expression parser
+    expr
+
+/// Parses a Rule.
+let rule =
+    // Parses a pattern.
+    let pat =
+        pipe2 uid
+            (parens (sepBy lid (pstring ",")))
+            (fun u vs -> u, vs)
+
+    let fRule =
+        pipe3 fid
+            (parensList lid)
+            (between (pstring "=") (pstring ";") expr)
+            (FuncConvert.FuncFromTupled FRule)
+
+    let gRule =
+        pipe4 gid
+            (pstring "(" >>. pat)
+            ((many (pstring "," >>. lid)) .>> pstring ")")
+            (between (pstring "=") (pstring ";") expr)
+            (fun functionName (cname, cparamList) paramList ruleRhs ->
+                GRule (functionName, cname, cparamList, paramList, ruleRhs))
+
+    gRule <|> fRule
+
+/// Parses a Program.
+let prog = ignoreWhitespace (many rule)
 
 //
 let private createParserExn str (ex : FParsec.Error.ParserError) =
