@@ -23,18 +23,17 @@ let parensList parser =
 let ident predicate =
     let firstChar = satisfy (fun c -> isAsciiLetter c && predicate c)
     let restChars = satisfy (fun c -> isAsciiLetter c || isDigit c)
-    let p = pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString () + s)
-    (p .>> spaces) <?> (sprintf "identifier:%A" predicate) // ToDo: provide readable msg
+    pipe2 firstChar (manyChars restChars) (fun c s -> c.ToString () + s)
 
 
 /// Parses a variable identifier.
-let lid : Parser<string, unit> = ident isLower
+let lid : Parser<string, unit> = ident isLower <?> "lid"
 /// Parses a constructor (Ctor) identifier.
-let uid : Parser<string, unit> = ident isUpper
+let uid : Parser<string, unit> = ident isUpper <?> "uid"
 /// Parses an FCall identifier.
-let fid : Parser<string, unit> = ident ((=) 'f')
+let fid : Parser<string, unit> = ident ((=) 'f') <?> "fid"
 /// Parses a GCall identifier.
-let gid : Parser<string, unit> = ident ((=) 'g')
+let gid : Parser<string, unit> = ident ((=) 'g') <?> "gid"
 
 
 /// Parses an Exp (expression).
@@ -67,8 +66,16 @@ let expr =
 
     (* Let *)
     and letBinding =
-        // TEMP : Until this is implemented properly, fail fatally if we see the "let" keyword.
-        pstring "let" >>. failFatally "The parser does not yet support 'let' bindings."
+        let binding =
+            spaces >>. lid .>>. ((ignoreWhitespace <| pstring "=") >>. expr)
+        let bindings =
+            sepBy binding (pstring ",")
+
+        pipe2
+            (pstring "let" >>. spaces1 >>. bindings)
+            (spaces1 >>. pstring "in" >>. spaces1 >>. expr)
+            (fun bindings body ->
+                Let (body, bindings))
 
     // Return the expression parser
     expr
@@ -98,41 +105,24 @@ let rule =
     gRule <|> fRule
 
 /// Parses a Program.
-let prog = ignoreWhitespace (many rule)
-
-//
-let private createParserExn str (ex : FParsec.Error.ParserError) =
-    let innerExn =
-        let msg =
-            let msg = sprintf "Parsing error at position %O." ex.Position
-            let sb = System.Text.StringBuilder (msg)
-            let mutable msgs = ex.Messages
-
-            if msgs <> null then
-                sb.AppendLine " Messages:" |> ignore
-                while msgs <> null && msgs.Head <> null do
-                    sb.Append("    ") |> ignore
-                    sb.AppendLine (msgs.Head.ToString ()) |> ignore
-                    msgs <- msgs.Tail
-            sb.ToString()
-        exn msg
-
-    System.Exception (str, innerExn)
+let prog =
+    // Ignore any trailing whitespace.
+    (many rule) .>> spaces
 
 let pExp str =
     match run expr str with
     | Success(r, _, _) -> r
-    | Failure(str, ex, _) ->
-        raise <| createParserExn str ex
+    | Failure(msg, _, _) ->
+        raise <| exn msg
 
 let pRule str =
     match run rule str with
     | Success(r, _, _) -> r
-    | Failure(str, ex, _) ->
-        raise <| createParserExn str ex
+    | Failure(msg, _, _) ->
+        raise <| exn msg
 
 let pProg str =
     match run prog str with
     | Success(r, _, _) -> Program r
-    | Failure(str, ex, _) ->
-        raise <| createParserExn str ex
+    | Failure(msg, _, _) ->
+        raise <| exn msg

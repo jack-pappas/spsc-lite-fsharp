@@ -14,6 +14,7 @@ type Params = Name list
 type Exp =
     | Var of Name
     | Call of CKind * Name * Args
+    // body * bindings
     | Let of Exp * (Name * Exp) list
 
     override this.ToString () =
@@ -35,9 +36,9 @@ type Rule =
     override this.ToString () =
         match this with
         | FRule (name, ``params``, expression) ->
-            name + "(" + showParams ``params`` + ")=" + expression.ToString ()
+            name + "(" + showParams ``params`` + ")=" + expression.ToString () + ";"
         | GRule (name, cname, cparams, ``params``, expression) ->
-            name + "(" + showPat cname cparams + showParamsTail ``params`` + ")=" + expression.ToString ()
+            name + "(" + showPat cname cparams + showParamsTail ``params`` + ")=" + expression.ToString () + ";"
 
 type Program =
     | Program of Rule list
@@ -49,7 +50,6 @@ type Program =
 
             rules
             |> List.iter (fun rule ->
-                sb.Append (rule.ToString ()) |> ignore
-                sb.Append ";" |> ignore)
+                sb.Append (rule.ToString ()) |> ignore)
 
             sb.ToString ()
